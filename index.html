@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Print & Save: 51-Composition Touchpoint Accessibility Game</title>
+<style>
+  :root {
+    --bg: #0F172A; --card: #1E293B; --text: #F8FAFC; --muted: #94A3B8;
+    --blue: #2563EB; --green: #10B981; --red: #EF4444; --amber: #F59E0B; --cyan: #06B6D4;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); max-width: 920px; margin: 0 auto; padding: 12px; user-select: none; }
+  .hud { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; background: var(--card); padding: 9px 12px; border-radius: 10px; border: 1px solid #334155; margin-bottom: 8px; text-align: center; font-size: 12px; font-weight: 600; }
+  .hud-val { font-size: 15px; font-weight: 800; color: var(--cyan); display: block; }
+  .prog-wrap { width: 100%; height: 7px; background: #334155; border-radius: 99px; overflow: hidden; margin-bottom: 10px; }
+  .prog-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--cyan), var(--blue), var(--green)); transition: width 0.2s; }
+  .card { background: var(--card); border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+  .btn { padding: 10px 18px; border: none; border-radius: 8px; background: var(--blue); color: #FFF; font-weight: 700; cursor: pointer; font-size: 14px; transition: transform 0.1s, opacity 0.1s; }
+  .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+  .canvas-wrap { background: #FFFFFF; border-radius: 10px; border: 2px solid #CBD5E1; padding: 6px; position: relative; text-align: center; }
+  canvas { display: block; margin: 0 auto; max-width: 100%; cursor: pointer; border-radius: 6px; }
+  .step-indicator { display: inline-flex; gap: 10px; align-items: center; background: #0F172A; padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 700; border: 1px solid #334155; }
+  .step-pill { padding: 3px 10px; border-radius: 99px; background: #334155; color: #CBD5E1; }
+  .step-pill.active { background: var(--amber); color: #0F172A; font-weight: 900; }
+  .step-pill.done { background: var(--green); color: #052E16; }
+  .wager-bar { display: flex; gap: 6px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
+  .star-btn { flex: 1; min-width: 110px; padding: 8px 6px; border-radius: 8px; border: 1.5px solid #475569; background: #0F172A; color: #FFF; cursor: pointer; font-weight: 700; font-size: 12px; text-align: center; }
+  .star-btn:hover { border-color: var(--amber); background: #1E293B; }
+  .sam-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; margin: 8px 0 12px; }
+  .sam-btn { background: #0F172A; border: 2px solid #334155; border-radius: 8px; padding: 5px 2px; cursor: pointer; text-align: center; font-size: 11px; }
+  .sam-btn.active { border-color: var(--cyan); background: rgba(6,182,212,0.2); }
+  .pill-row { display: flex; gap: 5px; margin: 4px 0 10px; }
+  .pill { flex: 1; padding: 6px; text-align: center; background: #0F172A; border: 1px solid #334155; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px; }
+  .pill.active { background: var(--blue); border-color: var(--cyan); }
+  .hidden { display: none !important; }
+  /* CVD / Low-Vision Accessibility Filters */
+  .filter-deutan { filter: url(#deutan-filter); }
+  .filter-protan { filter: url(#protan-filter); }
+  .filter-blur { filter: blur(1.1px) contrast(0.82); }
+  @media print {
+    body { background: #FFFFFF; color: #000000; }
+    .no-print { display: none !important; }
+    .card { border: 1px solid #000; box-shadow: none; background: #FFF; color: #000; }
+  }
+</style>
+</head>
+<body>
+
+<!-- SVG Viénot/Machado Dichromatic Colour-Blindness Filters -->
+<svg style="position:absolute; width:0; height:0;" aria-hidden="true">
+  <defs>
+    <filter id="deutan-filter">
+      <feColorMatrix type="matrix" values="0.29275 0.70725 0 0 0  0.29275 0.70725 0 0 0  -0.02234 0.02234 1 0 0  0 0 0 1 0"/>
+    </filter>
+    <filter id="protan-filter">
+      <feColorMatrix type="matrix" values="0.10889 0.89111 0 0 0  0.10889 0.89111 0 0 0  0.00447 -0.00447 1 0 0  0 0 0 1 0"/>
+    </filter>
+  </defs>
+</svg>
+
+<div class="hud no-print">
+  <div>LOGGED USER<span class="hud-val" id="hud-user">P01</span></div>
+  <div>5-MIN TIMER<span class="hud-val" id="hud-clock" style="color:var(--amber);">05:00</span></div>
+  <div>COMPOSITION<span class="hud-val" id="hud-comp">Login</span></div>
+  <div>ACCESSIBILITY<span class="hud-val" id="hud-acc" style="color:var(--green);">100%</span></div>
+  <div>STREAK<span class="hud-val" id="hud-streak">1x</span></div>
+  <div>SCORE<span class="hud-val" id="hud-score">0</span></div>
+</div>
+<div class="prog-wrap no-print"><div id="prog-bar" class="prog-fill"></div></div>
+
+<!-- 1. USER LOGIN & ACCESSIBILITY PROFILE SCREEN -->
+<div id="screen-login" class="card no-print">
+  <h2 style="margin:0 0 6px; color:var(--cyan);">User Login: 51-Composition "Print &amp; Save" Accessibility Arcade</h2>
+  <p style="margin:0 0 10px; font-size:13px; color:var(--muted);">
+    While logged in, your task on every composition card (<strong>C01–C51</strong>) is to execute the two-step document workflow:
+    <strong style="color:var(--amber);">Step 1: Click [ PRINT ] &rarr; Step 2: Click [ SAVE ]</strong> while avoiding <em>Share</em>, <em>Delete</em>, and background word clutter. At completion, you will <strong>Print</strong> your Accessibility Audit Report and <strong>Save</strong> your CSV telemetry file.
+  </p>
+  <div style="background:#0F172A; padding:9px 12px; border-radius:8px; font-size:11.5px; color:var(--muted); margin-bottom:12px; line-height:1.4;">
+    <strong>Ethical Research &amp; Informed Consent (Muratovski Ch. 3.9):</strong> Participation takes under 5 minutes, is voluntary (withdraw anytime without penalty), involves minimal everyday screen risk, and logs strictly anonymous telemetry (`user_id` only) to calibrate computable touchpoint accessibility.
+  </div>
+  <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:12px;">
+    <label style="font-size:12px; font-weight:700;">Login User ID:
+      <input type="text" id="inp-uid" value="P01" style="width:100%; margin-top:4px; padding:7px; border-radius:6px; border:1px solid #475569; background:#0F172A; color:#FFF;">
+    </label>
+    <label style="font-size:12px; font-weight:700;">Accessibility / Vision Mode:
+      <select id="inp-vision" style="width:100%; margin-top:4px; padding:7px; border-radius:6px; border:1px solid #475569; background:#0F172A; color:#FFF;">
+        <option value="Normal">Normal Trichromatic Vision</option>
+        <option value="Deutan_CVD">Deuteranopia CVD Simulation (Viénot)</option>
+        <option value="Protan_CVD">Protanopia CVD Simulation (Viénot)</option>
+        <option value="LowVision_Blur">Low-Acuity / Glare Blur Simulation</option>
+      </select>
+    </label>
+    <label style="font-size:12px; font-weight:700;">Session Deck (&lt; 5 Min Cap):
+      <select id="inp-deck" style="width:100%; margin-top:4px; padding:7px; border-radius:6px; border:1px solid #475569; background:#0F172A; color:#FFF;">
+        <option value="Sprint_24">24-Composition Stratified Core (~2.8 min)</option>
+        <option value="Full_51">All 51 Compositions C01–C51 Blitz (~4.2 min)</option>
+      </select>
+    </label>
+  </div>
+  <div style="display:flex; justify-content:space-between; align-items:center;">
+    <label style="font-size:13px; cursor:pointer;"><input type="checkbox" id="chk-consent" checked> I consent to logged-in telemetry recording</label>
+    <button class="btn" style="background:var(--green); color:#052E16;" onclick="loginAndStart()">LOGIN &amp; START PRINT&rarr;SAVE GAME &#9654;</button>
+  </div>
+</div>
+
+<!-- 2. MAIN 51-COMPOSITION GAMEPLAY STAGE -->
+<div id="screen-game" class="card hidden no-print">
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:8px;">
+    <div>
+      <span id="comp-badge" style="background:#0F172A; color:var(--cyan); padding:4px 10px; border-radius:6px; font-weight:800; font-size:13px;">C01</span>
+      <span id="comp-title" style="font-weight:700; font-size:15px; margin-left:6px;">Blank outlined blocks</span>
+    </div>
+    <div class="step-indicator">
+      <span>Logged-In Task:</span>
+      <span id="pill-step1" class="step-pill active">STEP 1: CLICK PRINT</span>
+      <span>&rarr;</span>
+      <span id="pill-step2" class="step-pill">STEP 2: CLICK SAVE</span>
+    </div>
+  </div>
+
+  <div id="canvas-container" class="canvas-wrap">
+    <canvas id="comp-canvas" width="780" height="340"></canvas>
+  </div>
+
+  <!-- 1-CLICK BRIER CONFIDENCE WAGER BAR -->
+  <div id="wager-box" class="hidden" style="margin-top:10px; padding-top:8px; border-top:1px solid #334155;">
+    <div style="text-align:center; font-size:12.5px; font-weight:700; color:var(--amber);">
+      Sequence Logged! Tap Your Confidence Shield (Proper Brier Bonus up to +50 pts):
+    </div>
+    <div class="wager-bar">
+      <div class="star-btn" onclick="recordBrier(0.20)">&#9733;&#9734;&#9734;&#9734;&#9734; 20%</div>
+      <div class="star-btn" onclick="recordBrier(0.40)">&#9733;&#9733;&#9734;&#9734;&#9734; 40%</div>
+      <div class="star-btn" onclick="recordBrier(0.60)">&#9733;&#9733;&#9733;&#9734;&#9734; 60%</div>
+      <div class="star-btn" onclick="recordBrier(0.80)">&#9733;&#9733;&#9733;&#9733;&#9734; 80%</div>
+      <div class="star-btn" onclick="recordBrier(1.00)">&#9733;&#9733;&#9733;&#9733;&#9733; 100%</div>
+    </div>
+  </div>
+</div>
+
+<!-- 3. LOGGED-IN DEBRIEF: PRINT FILE & SAVE TELEMETRY CSV -->
+<div id="screen-debrief" class="card hidden">
+  <h2 style="margin:0 0 6px; color:var(--cyan);">Logged-In Accessibility Audit Complete: Print &amp; Save File</h2>
+  <p id="summary-banner" style="font-size:13.5px; color:var(--muted); margin:0 0 12px;"></p>
+
+  <div class="no-print">
+    <div style="font-size:12.5px; font-weight:700;">1. SAM Affective Valence (1=Stressed by Clutter/Conflict to 9=Reassured by Clear Sequence):</div>
+    <div id="sam-box" class="sam-grid"></div>
+
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+      <div>
+        <div style="font-size:12px; font-weight:700;">2. Step 1&rarr;2 Cues Aided Handoff (Likert 1–5):</div>
+        <div class="pill-row" data-k="l1"></div>
+      </div>
+      <div>
+        <div style="font-size:12px; font-weight:700;">3. Swapped Icons/Arrows Caused Hesitation (1–5):</div>
+        <div class="pill-row" data-k="l2"></div>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:12px; margin-top:12px; flex-wrap:wrap;">
+      <button class="btn" style="flex:1; background:var(--amber); color:#0F172A; font-size:15px;" onclick="printAccessibilityFile()">
+        &#128424; STEP 1: PRINT ACCESSIBILITY REPORT
+      </button>
+      <button class="btn" style="flex:1; background:var(--green); color:#052E16; font-size:15px;" onclick="saveTelemetryCSV()">
+        &#128190; STEP 2: SAVE TELEMETRY CSV FILE
+      </button>
+    </div>
+    <p id="submission-status" role="status" aria-live="polite" style="font-size:12px; color:var(--muted); margin:8px 0 0;"></p>
+  </div>
+
+  <div id="print-summary-table" style="margin-top:14px; font-size:11.5px; overflow-x:auto;"></div>
+</div>
+
+<script>
+// Paste the deployed Apps Script web app's /exec URL here to enable anonymous Sheets submission.
+const GOOGLE_APPS_SCRIPT_URL = "";
+
+// Complete 51-Composition Specification Catalog (C01 to C51) matching uploaded sheets
+const COMP_CATALOG = [
+  {id:"C01", name:"Blank outlined blocks", fam:"Modality", text:"none", icon:"none", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C02", name:"Text only", fam:"Modality", text:"normal", icon:"none", border:"none", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C03", name:"Text + clear boundary", fam:"Modality", text:"normal", icon:"none", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C04", name:"Icons only", fam:"Modality", text:"none", icon:"normal", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C05", name:"Text + correct icons", fam:"Modality", text:"normal", icon:"normal", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C06", name:"Task baseline", fam:"Sequence", text:"normal", icon:"none", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C07", name:"Correct step numbers", fam:"Sequence", text:"normal", icon:"none", border:"solid", seq:"numbers", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C08", name:"Correct sequence arrow", fam:"Sequence", text:"normal", icon:"none", border:"solid", seq:"arrow", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C09", name:"Numbers plus arrow", fam:"Sequence", text:"normal", icon:"none", border:"solid", seq:"both", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C10", name:"Hierarchy: Print above Save", fam:"Sequence", text:"normal", icon:"none", border:"hierarchy", seq:"both", clutter:0, cr:16.29, pop:1, stroop:0},
+  {id:"C11", name:"Bold task boxes", fam:"Sequence", text:"normal", icon:"none", border:"bold_task", seq:"both", clutter:0, cr:16.29, pop:1, stroop:0},
+  {id:"C12", name:"Colour-emphasised task boxes", fam:"Sequence", text:"normal", icon:"none", border:"color_task", seq:"both", clutter:0, cr:7.00, pop:1, stroop:0},
+  {id:"C13", name:"Muted irrelevant boxes", fam:"Sequence", text:"normal", icon:"none", border:"muted_irrel", seq:"both", clutter:0, cr:16.29, pop:1, stroop:0},
+  {id:"C14", name:"Text + faint boundary", fam:"Contrast", text:"normal", icon:"none", border:"faint", seq:"none", clutter:0, cr:2.32, pop:0, stroop:0},
+  {id:"C15", name:"Text + fragmented boundary", fam:"Contrast", text:"normal", icon:"none", border:"dashed", seq:"none", clutter:0, cr:4.54, pop:0, stroop:0},
+  {id:"C16", name:"Low-contrast text", fam:"Contrast", text:"faint", icon:"none", border:"solid", seq:"none", clutter:0, cr:1.61, pop:0, stroop:0},
+  {id:"C17", name:"Weak sequence contrast", fam:"Contrast", text:"normal", icon:"none", border:"solid", seq:"weak_both", clutter:0, cr:2.32, pop:0, stroop:0},
+  {id:"C18", name:"Medium sequence contrast", fam:"Contrast", text:"normal", icon:"none", border:"solid", seq:"med_both", clutter:0, cr:4.54, pop:0, stroop:0},
+  {id:"C19", name:"Strong sequence contrast", fam:"Contrast", text:"normal", icon:"none", border:"solid", seq:"strong_both", clutter:0, cr:16.29, pop:1, stroop:0},
+  {id:"C20", name:"Shared coloured outlines", fam:"Colour", text:"normal", icon:"normal", border:"shared_blue", seq:"none", clutter:18, cr:4.54, pop:0, stroop:0},
+  {id:"C21", name:"One box colour accent", fam:"Colour", text:"normal", icon:"normal", border:"one_accent", seq:"none", clutter:18, cr:5.25, pop:1, stroop:0},
+  {id:"C22", name:"Distinct equal-luminance hues", fam:"Colour", text:"normal", icon:"normal", border:"isolum", seq:"none", clutter:18, cr:3.03, pop:0, stroop:0},
+  {id:"C23", name:"One high-contrast box", fam:"Colour", text:"normal", icon:"normal", border:"one_dark", seq:"none", clutter:18, cr:16.29, pop:1, stroop:0},
+  {id:"C24", name:"Competing box emphases", fam:"Colour", text:"normal", icon:"normal", border:"competing", seq:"none", clutter:18, cr:4.54, pop:0, stroop:0},
+  {id:"C25", name:"All boxes saturated", fam:"Colour", text:"normal", icon:"none", border:"all_sat", seq:"both", clutter:0, cr:4.54, pop:0, stroop:0},
+  {id:"C26", name:"Weak task-box contrast", fam:"Colour", text:"normal", icon:"none", border:"weak_task", seq:"both", clutter:0, cr:2.32, pop:0, stroop:0},
+  {id:"C27", name:"Bold irrelevant actions", fam:"Colour", text:"normal", icon:"none", border:"bold_irrel", seq:"both", clutter:0, cr:4.54, pop:0, stroop:0},
+  {id:"C28", name:"Incorrect text without icons", fam:"Conflict", text:"shuffled", icon:"none", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
+  {id:"C29", name:"Text + irrelevant icons", fam:"Conflict", text:"normal", icon:"irrelevant", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C30", name:"Correct text + conflicting icons", fam:"Conflict", text:"normal", icon:"conflict", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C31", name:"Conflicting text + correct icons", fam:"Conflict", text:"conflict", icon:"normal", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C32", name:"Mixed correct and conflicting pairs", fam:"Conflict", text:"normal", icon:"mixed", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C33", name:"Agreeing but incorrect cues", fam:"Conflict", text:"shifted", icon:"normal", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C34", name:"Reversed step numbers", fam:"Conflict", text:"normal", icon:"none", border:"solid", seq:"rev_num", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C35", name:"Reversed arrow", fam:"Conflict", text:"normal", icon:"none", border:"solid", seq:"rev_arrow", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C36", name:"Bidirectional arrow", fam:"Conflict", text:"normal", icon:"none", border:"solid", seq:"bi_arrow", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C37", name:"Numbers conflict with arrow", fam:"Conflict", text:"normal", icon:"none", border:"solid", seq:"num_vs_arrow", clutter:0, cr:16.29, pop:0, stroop:1},
+  {id:"C38", name:"Cluttered text controls", fam:"Clutter", text:"normal", icon:"none", border:"solid", seq:"none", clutter:22, cr:7.00, pop:0, stroop:0},
+  {id:"C39", name:"Cluttered text + icon controls", fam:"Clutter", text:"normal", icon:"normal", border:"solid", seq:"none", clutter:22, cr:7.00, pop:0, stroop:0},
+  {id:"C40", name:"Words in organised rows", fam:"Clutter", text:"normal", icon:"normal", border:"tilted", seq:"none", clutter:20, cr:7.00, pop:0, stroop:0},
+  {id:"C41", name:"Same word count / random placement", fam:"Clutter", text:"normal", icon:"normal", border:"tilted", seq:"none", clutter:20, cr:7.00, pop:0, stroop:0},
+  {id:"C42", name:"Words inside boundaries", fam:"Clutter", text:"normal", icon:"normal", border:"intrude_in", seq:"none", clutter:22, cr:4.54, pop:0, stroop:0},
+  {id:"C43", name:"Words crossing boundaries", fam:"Clutter", text:"normal", icon:"normal", border:"intrude_cross", seq:"none", clutter:22, cr:4.54, pop:0, stroop:0},
+  {id:"C44", name:"Diagonal word stream", fam:"Clutter", text:"normal", icon:"none", border:"diagonal_stream", seq:"none", clutter:26, cr:3.03, pop:0, stroop:0},
+  {id:"C45", name:"Radial word field", fam:"Clutter", text:"normal", icon:"normal", border:"oval", seq:"none", clutter:22, cr:4.54, pop:0, stroop:0},
+  {id:"C46", name:"Neutral baseline / varied boxes", fam:"Clutter", text:"normal", icon:"normal", border:"mixed_shape", seq:"none", clutter:20, cr:7.00, pop:0, stroop:0},
+  {id:"C47", name:"Dense words / mixed sizes", fam:"Clutter", text:"normal", icon:"normal", border:"mixed_shape", seq:"none", clutter:26, cr:3.03, pop:0, stroop:0},
+  {id:"C48", name:"Words competing with icons", fam:"Clutter", text:"normal", icon:"normal", border:"tangle", seq:"none", clutter:28, cr:2.32, pop:0, stroop:0},
+  {id:"C49", name:"Word clutter plus sequence", fam:"Clutter", text:"normal", icon:"normal", border:"tilted", seq:"both", clutter:20, cr:7.00, pop:1, stroop:0},
+  {id:"C50", name:"Rotated mixed boundaries plus sequence", fam:"Clutter", text:"normal", icon:"normal", border:"mixed_shape", seq:"both", clutter:20, cr:7.00, pop:1, stroop:0},
+  {id:"C51", name:"Competing visual emphases", fam:"Clutter", text:"normal", icon:"normal", border:"competing", seq:"both", clutter:22, cr:4.54, pop:0, stroop:0}
+];
+
+// Stratified 24-Composition Core Subset (4 per family) for rapid 2.8-min run
+const SPRINT_24_IDS = [
+  "C01","C03","C04","C05", "C06","C09","C10","C12", "C14","C15","C16","C19",
+  "C21","C22","C26","C27", "C30","C31","C34","C37", "C38","C42","C48","C49"
+];
+
+const CLUTTER_WORDS = ["Help","Zoom","Tools","View","Edit","Copy","Move","Arrange","Insert","Draw","Undo","Setup","Find","Layer"];
+
+let activeDeck = [], curIdx = 0, stepPhase = 1, activeBoxes = [], activeClutter = [];
+let tTrialStart = 0, tPrintClick = 0, firstMoveDone = 0, faCount = 0;
+let mPrintPass = 0, sPrintPass = 0, hSeqPass = 0, sSavePass = 0, pendingTelemetry = null;
+let totalScore = 0, streak = 1, remainSec = 300, timerRef = null;
+let surveyState = {sam: 8, l1: 5, l2: 4};
+const telemetryRows = [];
+
+function loginAndStart() {
+  if (!document.getElementById("chk-consent").checked) { alert("Please confirm consent to log in."); return; }
+  const uid = document.getElementById("inp-uid").value || "P01";
+  const vMode = document.getElementById("inp-vision").value;
+  const deckMode = document.getElementById("inp-deck").value;
+
+  document.getElementById("hud-user").innerText = uid;
+  const wrap = document.getElementById("canvas-container");
+  wrap.className = "canvas-wrap";
+  if (vMode === "Deutan_CVD") wrap.classList.add("filter-deutan");
+  if (vMode === "Protan_CVD") wrap.classList.add("filter-protan");
+  if (vMode === "LowVision_Blur") wrap.classList.add("filter-blur");
+
+  activeDeck = deckMode === "Full_51"
+    ? COMP_CATALOG.slice()
+    : COMP_CATALOG.filter(c => SPRINT_24_IDS.includes(c.id));
+
+  document.getElementById("screen-login").classList.add("hidden");
+  document.getElementById("screen-game").classList.remove("hidden");
+
+  timerRef = setInterval(() => {
+    remainSec = Math.max(0, remainSec - 1);
+    const m = String(Math.floor(remainSec / 60)).padStart(2, "0");
+    const s = String(remainSec % 60).padStart(2, "0");
+    document.getElementById("hud-clock").innerText = `${m}:${s}`;
+  }, 1000);
+
+  initDebriefPills();
+  loadCompositionTrial();
+}
+
+function drawControlIcon(ctx, type, x, y, color) {
+  ctx.save();
+  ctx.strokeStyle = color; ctx.fillStyle = color; ctx.lineWidth = 1.8;
+  if (type === "Share") {
+    ctx.beginPath(); ctx.moveTo(x+6, y-5); ctx.lineTo(x-4, y); ctx.lineTo(x+6, y+5); ctx.stroke();
+    ctx.beginPath(); ctx.arc(x+6, y-5, 2, 0, Math.PI*2); ctx.arc(x-4, y, 2, 0, Math.PI*2); ctx.arc(x+6, y+5, 2, 0, Math.PI*2); ctx.fill();
+  } else if (type === "Save") {
+    ctx.strokeRect(x-6, y-6, 12, 12); ctx.strokeRect(x-3, y-6, 6, 4); ctx.strokeRect(x-4, y+1, 8, 5);
+  } else if (type === "Delete") {
+    ctx.strokeRect(x-5, y-4, 10, 10); ctx.beginPath(); ctx.moveTo(x-7, y-4); ctx.lineTo(x+7, y-4); ctx.stroke();
+  } else if (type === "Print") {
+    ctx.strokeRect(x-6, y-2, 12, 7); ctx.strokeRect(x-4, y-6, 8, 4); ctx.strokeRect(x-4, y+3, 8, 4);
+  } else if (type === "Irrel") {
+    ctx.font = "bold 14px monospace"; ctx.fillText("±", x-5, y+5);
+  }
+  ctx.restore();
+}
+
+function loadCompositionTrial() {
+  if (curIdx >= activeDeck.length) {
+    finishSession();
+    return;
+  }
+  const comp = activeDeck[curIdx];
+  document.getElementById("hud-comp").innerText = `${comp.id} (${curIdx+1}/${activeDeck.length})`;
+  document.getElementById("comp-badge").innerText = comp.id;
+  document.getElementById("comp-title").innerText = comp.name;
+  document.getElementById("prog-bar").style.width = `${((curIdx / activeDeck.length) * 100).toFixed(1)}%`;
+  document.getElementById("wager-box").classList.add("hidden");
+
+  stepPhase = 1; faCount = 0; firstMoveDone = 0;
+  mPrintPass = 0; sPrintPass = 0; hSeqPass = 0; sSavePass = 0;
+  document.getElementById("pill-step1").className = "step-pill active";
+  document.getElementById("pill-step2").className = "step-pill";
+
+  const canvas = document.getElementById("comp-canvas");
+  const ctx = canvas.getContext("2d");
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Build 4 button positions (Hierarchy C10 vs Standard 2x2 Grid with slight per-trial permutation)
+  const roles = ["Share", "Save", "Delete", "Print"];
+  const iconMap = {Share:"Share", Save:"Save", Delete:"Delete", Print:"Print"};
+  if (comp.icon === "conflict") {
+    iconMap.Share = "Print"; iconMap.Save = "Delete"; iconMap.Delete = "Share"; iconMap.Print = "Save";
+  } else if (comp.icon === "mixed") {
+    iconMap.Delete = "Print"; iconMap.Print = "Delete";
+  }
+
+  let coords = [
+    {x: 230, y: 105, w: 150, h: 58, rot: 0, oval: false},
+    {x: 550, y: 105, w: 150, h: 58, rot: 0, oval: false},
+    {x: 230, y: 235, w: 150, h: 58, rot: 0, oval: false},
+    {x: 550, y: 235, w: 150, h: 58, rot: 0, oval: false}
+  ];
+
+  // Rotate role assignment slightly across trials so C01 isn't purely memorized, while keeping C10 stacked
+  const perm = (curIdx % 2 === 0) ? ["Share","Save","Delete","Print"] : ["Print","Share","Delete","Save"];
+  if (comp.id === "C10") {
+    coords = [
+      {x: 390, y: 290, w: 110, h: 36, rot: 0, oval: false, role:"Share"},
+      {x: 390, y: 175, w: 175, h: 56, rot: 0, oval: false, role:"Save"},
+      {x: 560, y: 290, w: 110, h: 36, rot: 0, oval: false, role:"Delete"},
+      {x: 390, y: 80,  w: 175, h: 56, rot: 0, oval: false, role:"Print"}
+    ];
+  } else {
+    coords.forEach((c, i) => {
+      c.role = perm[i];
+      if (comp.border === "tilted" || comp.clutter > 0) c.rot = (i % 2 === 0 ? -0.11 : 0.09);
+      if (comp.border === "oval") c.oval = true;
+      if (comp.border === "mixed_shape") c.oval = (i % 2 === 1);
+      if (comp.border === "tangle") { c.x = 340 + (i*35); c.y = 135 + ((i%2)*45); c.w = 95; c.h = 38; }
+    });
+  }
+  activeBoxes = coords;
+
+  // Render Background Clutter Words (C20-C24, C38-C51)
+  activeClutter = [];
+  if (comp.clutter > 0) {
+    ctx.save();
+    for (let k = 0; k < comp.clutter; k++) {
+      const wTxt = CLUTTER_WORDS[k % CLUTTER_WORDS.length];
+      let wx = 70 + ((k * 137) % 640);
+      let wy = 40 + ((k * 89) % 265);
+      if (comp.id === "C40") { wx = 110 + (k % 5) * 135; wy = 55 + Math.floor(k / 5) * 68; }
+      if (comp.id === "C44") { wx = 120 + k * 22; wy = 45 + k * 10 + (k%3)*8; }
+      const fSize = (comp.id === "C47" && k % 3 === 0) ? 20 : 12;
+      ctx.font = `${fSize}px sans-serif`;
+      ctx.fillStyle = "#64748B";
+      ctx.fillText(wTxt, wx, wy);
+      activeClutter.push({x: wx, y: wy - 10, w: 46, h: 16});
+    }
+    ctx.restore();
+  }
+
+  // Render 4 Action Boxes
+  activeBoxes.forEach((b, idx) => {
+    ctx.save();
+    ctx.translate(b.x, b.y);
+    ctx.rotate(b.rot);
+
+    // Determine Border Style & Colour
+    let strokeCol = "#334155", lineW = 1.5, doStroke = true;
+    if (comp.border === "none" || comp.border === "diagonal_stream" || comp.border === "tangle") doStroke = false;
+    if (comp.border === "faint") strokeCol = "#E2E8F0";
+    if (comp.border === "dashed") ctx.setLineDash([5, 5]);
+    if (comp.border === "bold_task" && (b.role === "Print" || b.role === "Save")) { lineW = 3.2; strokeCol = "#0F172A"; }
+    if (comp.border === "color_task") {
+      if (b.role === "Print") { strokeCol = "#2563EB"; lineW = 2.8; }
+      if (b.role === "Save") { strokeCol = "#DC2626"; lineW = 2.8; }
+    }
+    if (comp.border === "muted_irrel" && (b.role === "Share" || b.role === "Delete")) strokeCol = "#F1F5F9";
+    if (comp.border === "shared_blue" || (comp.border === "one_accent" && b.role === "Print")) { strokeCol = "#2563EB"; lineW = 2.4; }
+    if (comp.border === "isolum") strokeCol = ["#2563EB","#16A34A","#D97706","#9333EA"][idx];
+    if (comp.border === "one_dark" && b.role === "Print") { strokeCol = "#0F172A"; lineW = 3.2; }
+    if (comp.border === "all_sat") { strokeCol = ["#0284C7","#E11D48","#7C3AED","#059669"][idx]; lineW = 2.5; }
+    if (comp.border === "weak_task" && (b.role === "Print" || b.role === "Save")) strokeCol = "#E2E8F0";
+    if (comp.border === "bold_irrel" && (b.role === "Share" || b.role === "Delete")) { strokeCol = "#0F172A"; lineW = 3.2; }
+
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    if (doStroke) {
+      ctx.strokeStyle = strokeCol; ctx.lineWidth = lineW;
+      if (b.oval) {
+        ctx.beginPath(); ctx.ellipse(0, 0, b.w/2, b.h/2, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+      } else {
+        ctx.fillRect(-b.w/2, -b.h/2, b.w, b.h);
+        ctx.strokeRect(-b.w/2, -b.h/2, b.w, b.h);
+      }
+    }
+
+    // Text & Icon Content
+    let txtCol = "#1E293B";
+    if (comp.text === "faint") txtCol = "#E2E8F0";
+    if (comp.border === "muted_irrel" && (b.role === "Share" || b.role === "Delete")) txtCol = "#CBD5E1";
+
+    if (comp.icon !== "none") {
+      const icType = comp.icon === "irrelevant" ? "Irrel" : iconMap[b.role];
+      drawControlIcon(ctx, icType, comp.text === "none" ? 0 : -28, 0, txtCol);
+    }
+    if (comp.text !== "none") {
+      ctx.fillStyle = txtCol;
+      ctx.font = "600 15px system-ui, sans-serif";
+      ctx.textAlign = "center"; ctx.textBaseline = "middle";
+      let dispTxt = b.role;
+      if (comp.text === "conflict") {
+        const swap = {Print:"Share", Save:"Delete", Share:"Print", Delete:"Save"};
+        dispTxt = swap[b.role];
+      }
+      ctx.fillText(dispTxt, comp.icon === "none" ? 0 : 12, 0);
+    }
+
+    // Intruding clutter words inside/crossing boundary (C42, C43)
+    if (comp.border === "intrude_in" || comp.border === "intrude_cross") {
+      ctx.fillStyle = "#64748B"; ctx.font = "11px sans-serif";
+      ctx.fillText("Tools", -b.w/3, -b.h/2 + (comp.border === "intrude_cross" ? 2 : 12));
+      ctx.fillText("Zoom", b.w/4, b.h/2 - (comp.border === "intrude_cross" ? 2 : 10));
+    }
+    ctx.restore();
+  });
+
+  // Render Sequence Cues (Step Numbers 1, 2 and Connecting Arrow between Print and Save)
+  const pBox = activeBoxes.find(b => b.role === "Print");
+  const sBox = activeBoxes.find(b => b.role === "Save");
+  if (comp.seq !== "none" && pBox && sBox) {
+    ctx.save();
+    let seqCol = "#1E293B";
+    if (comp.seq === "weak_both") seqCol = "#CBD5E1";
+    if (comp.seq === "med_both") seqCol = "#64748B";
+    ctx.fillStyle = seqCol; ctx.strokeStyle = seqCol; ctx.lineWidth = 1.8;
+    ctx.font = "bold 13px sans-serif";
+
+    const revNum = (comp.seq === "rev_num" || comp.seq === "num_vs_arrow");
+    if (["numbers","both","weak_both","med_both","strong_both","rev_num","num_vs_arrow"].includes(comp.seq)) {
+      ctx.fillText(revNum ? "2" : (comp.id === "C07" ? "STEP 1" : "1"), pBox.x - pBox.w/2 + 6, pBox.y - pBox.h/2 - 8);
+      ctx.fillText(revNum ? "1" : (comp.id === "C07" ? "STEP 2" : "2"), sBox.x - sBox.w/2 + 6, sBox.y - sBox.h/2 - 8);
+    }
+    if (["arrow","both","weak_both","med_both","strong_both","rev_arrow","bi_arrow","num_vs_arrow"].includes(comp.seq)) {
+      const fromB = (comp.seq === "rev_arrow") ? sBox : pBox;
+      const toB   = (comp.seq === "rev_arrow") ? pBox : sBox;
+      const angle = Math.atan2(toB.y - fromB.y, toB.x - fromB.x);
+      const sx = fromB.x + Math.cos(angle)*(fromB.w/2 + 6);
+      const sy = fromB.y + Math.sin(angle)*(fromB.h/2 + 6);
+      const ex = toB.x - Math.cos(angle)*(toB.w/2 + 8);
+      const ey = toB.y - Math.sin(angle)*(toB.h/2 + 8);
+      ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
+      // Arrowhead at target
+      ctx.beginPath();
+      ctx.moveTo(ex, ey);
+      ctx.lineTo(ex - 9*Math.cos(angle - 0.4), ey - 9*Math.sin(angle - 0.4));
+      ctx.lineTo(ex - 9*Math.cos(angle + 0.4), ey - 9*Math.sin(angle + 0.4));
+      ctx.closePath(); ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  tTrialStart = performance.now();
+  canvas.onmousemove = () => { if (!firstMoveDone) firstMoveDone = 1; };
+  canvas.onclick = (e) => handleCanvasClick(e, comp);
+}
+
+function handleCanvasClick(e, comp) {
+  if (!document.getElementById("wager-box").classList.contains("hidden")) return;
+  const canvas = document.getElementById("comp-canvas");
+  const r = canvas.getBoundingClientRect();
+  const cx = (e.clientX - r.left) * (canvas.width / r.width);
+  const cy = (e.clientY - r.top) * (canvas.height / r.height);
+
+  // Check if click landed inside any of the 4 action boxes
+  let clickedBox = null, cleanInside = 0;
+  for (const b of activeBoxes) {
+    if (Math.abs(cx - b.x) <= b.w/2 + 6 && Math.abs(cy - b.y) <= b.h/2 + 6) {
+      clickedBox = b;
+      cleanInside = (Math.abs(cx - b.x) <= b.w/2 - 3 && Math.abs(cy - b.y) <= b.h/2 - 3) ? 1 : 0;
+      break;
+    }
+  }
+
+  if (!clickedBox) {
+    faCount++;
+    return;
+  }
+
+  if (stepPhase === 1) {
+    // Logged-In Step 1: Must click PRINT
+    tPrintClick = performance.now();
+    if (clickedBox.role === "Print") {
+      mPrintPass = 1;
+      sPrintPass = cleanInside;
+      stepPhase = 2;
+      document.getElementById("pill-step1").className = "step-pill done";
+      document.getElementById("pill-step2").className = "step-pill active";
+    } else {
+      faCount++;
+      // Record sequence inversion or wrong first click, still advance to Step 2
+      mPrintPass = 0; sPrintPass = 0; stepPhase = 2;
+      document.getElementById("pill-step1").className = "step-pill";
+      document.getElementById("pill-step2").className = "step-pill active";
+    }
+  } else if (stepPhase === 2) {
+    // Logged-In Step 2: Must click SAVE
+    const tNow = performance.now();
+    const rtPrint = Math.max(120, tPrintClick - tTrialStart);
+    const rtHandoff = Math.max(110, tNow - tPrintClick);
+    const rtTotal = rtPrint + rtHandoff;
+
+    if (clickedBox.role === "Save") {
+      hSeqPass = mPrintPass ? 1 : 0;
+      sSavePass = cleanInside;
+    } else {
+      faCount++;
+      hSeqPass = 0; sSavePass = 0;
+    }
+
+    const pBox = activeBoxes.find(b => b.role === "Print");
+    const sBox = activeBoxes.find(b => b.role === "Save");
+    const distPx = Math.hypot(sBox.x - pBox.x, sBox.y - pBox.y);
+    const wEffPx = (comp.border === "intrude_in" || comp.border === "tangle") ? 18.0 : 48.0;
+    const seqSuccess = (mPrintPass === 1 && hSeqPass === 1) ? 1 : 0;
+
+    // Compute per-composition Accessibility Score (0 to 100)
+    const faTerm = Math.max(0, 1.0 - faCount / 4.0);
+    const rtTerm = Math.max(0, 1.0 - (rtTotal - 450.0) / 4500.0);
+    const accScore = 100.0 * (0.50 * seqSuccess + 0.25 * faTerm + 0.25 * Math.min(1.0, rtTerm));
+
+    let seqCode = 0;
+    if (["numbers","arrow","both","weak_both","med_both","strong_both"].includes(comp.seq)) seqCode = 1;
+    if (["rev_num","rev_arrow","bi_arrow","num_vs_arrow"].includes(comp.seq)) seqCode = -1;
+
+    pendingTelemetry = {
+      user_id: document.getElementById("inp-uid").value || "P01",
+      vision_mode: document.getElementById("inp-vision").value,
+      game_mode: document.getElementById("inp-deck").value,
+      trial_index: curIdx + 1,
+      comp_id: comp.id,
+      comp_name: comp.name.replace(/,/g, " "),
+      comp_family: comp.fam,
+      contrast_ratio: comp.cr,
+      n_distractors: 3 + comp.clutter,
+      popout_flag: comp.pop,
+      stroop_conflict: comp.stroop,
+      seq_guidance: seqCode,
+      fitts_A_px: distPx.toFixed(1),
+      fitts_W_eff_px: wEffPx.toFixed(1),
+      discovered_D: 1,
+      matched_M_print: mPrintPass,
+      selected_S_print: sPrintPass,
+      handoff_H_seq: hSeqPass,
+      selected_S_save: sSavePass,
+      false_alarms_fa: faCount,
+      sdt_outcome: seqSuccess ? "Hit" : (faCount > 0 ? "FA" : "Miss"),
+      rt_print_ms: rtPrint.toFixed(1),
+      rt_handoff_ms: rtHandoff.toFixed(1),
+      rt_total_ms: rtTotal.toFixed(1),
+      accessibility_score: accScore.toFixed(1),
+      sequence_success: seqSuccess
+    };
+
+    document.getElementById("wager-box").classList.remove("hidden");
+  }
+}
+
+function recordBrier(q) {
+  const y = pendingTelemetry.sequence_success;
+  streak = y ? Math.min(5, streak + 1) : 1;
+  const brierBonus = 50.0 * (1.0 - Math.pow(q - y, 2));
+  const basePts = y ? Math.max(15.0, 100.0 - 0.02 * parseFloat(pendingTelemetry.rt_total_ms)) : -25.0;
+  const pts = basePts + brierBonus;
+  totalScore += pts;
+
+  pendingTelemetry.confidence_q = q.toFixed(2);
+  pendingTelemetry.trial_payoff_pts = pts.toFixed(1);
+  telemetryRows.push(pendingTelemetry);
+
+  const meanAcc = telemetryRows.reduce((a, r) => a + parseFloat(r.accessibility_score), 0) / telemetryRows.length;
+  document.getElementById("hud-acc").innerText = `${meanAcc.toFixed(0)}%`;
+  document.getElementById("hud-streak").innerText = `${streak}x`;
+  document.getElementById("hud-score").innerText = Math.round(totalScore);
+
+  curIdx++;
+  loadCompositionTrial();
+}
+
+function finishSession() {
+  clearInterval(timerRef);
+  document.getElementById("screen-game").classList.add("hidden");
+  document.getElementById("screen-debrief").classList.remove("hidden");
+
+  const meanAcc = telemetryRows.reduce((a, r) => a + parseFloat(r.accessibility_score), 0) / telemetryRows.length;
+  const passRate = (100 * telemetryRows.filter(r => r.sequence_success === 1).length / telemetryRows.length).toFixed(1);
+  document.getElementById("summary-banner").innerHTML =
+    `Logged-In User: <strong>${telemetryRows[0].user_id}</strong> (${telemetryRows[0].vision_mode}) &bull; ` +
+    `Compositions Tested: <strong>${telemetryRows.length}</strong> &bull; ` +
+    `Print&rarr;Save Pass Rate: <strong>${passRate}%</strong> &bull; ` +
+    `Mean Accessibility Index: <strong>${meanAcc.toFixed(1)} / 100</strong>`;
+
+  // Render printable summary table
+  let html = `<table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse:collapse; text-align:left;">
+    <thead><tr><th>Comp ID</th><th>Name</th><th>Family</th><th>Print&rarr;Save</th><th>FA</th><th>RT Total (ms)</th><th>Accessibility</th><th>Brier q</th></tr></thead><tbody>`;
+  telemetryRows.forEach(r => {
+    html += `<tr><td>${r.comp_id}</td><td>${r.comp_name}</td><td>${r.comp_family}</td><td>${r.sequence_success ? "PASS" : "FAIL"}</td><td>${r.false_alarms_fa}</td><td>${r.rt_total_ms}</td><td>${r.accessibility_score}%</td><td>${r.confidence_q}</td></tr>`;
+  });
+  html += `</tbody></table>`;
+  document.getElementById("print-summary-table").innerHTML = html;
+}
+
+function initDebriefPills() {
+  const sam = document.getElementById("sam-box");
+  for (let i = 1; i <= 9; i++) {
+    const d = document.createElement("div");
+    d.className = "sam-btn" + (i === 8 ? " active" : "");
+    d.innerHTML = `<strong>${i}</strong>`;
+    d.onclick = () => {
+      surveyState.sam = i;
+      Array.from(sam.children).forEach(c => c.classList.remove("active"));
+      d.classList.add("active");
+    };
+    sam.appendChild(d);
+  }
+  document.querySelectorAll(".pill-row").forEach(row => {
+    const k = row.dataset.k;
+    for (let v = 1; v <= 5; v++) {
+      const p = document.createElement("div");
+      p.className = "pill" + (surveyState[k] === v ? " active" : "");
+      p.innerText = v;
+      p.onclick = () => {
+        surveyState[k] = v;
+        Array.from(row.children).forEach(c => c.classList.remove("active"));
+        p.classList.add("active");
+      };
+      row.appendChild(p);
+    }
+  });
+}
+
+function printAccessibilityFile() {
+  window.print();
+}
+
+let submissionInProgress = false;
+let submissionAttempted = false;
+
+async function saveTelemetryCSV() {
+  if (submissionInProgress || submissionAttempted) return;
+
+  const cols = Object.keys(telemetryRows[0]).concat(["likert_seq_aid","likert_stroop_hes","sam_valence"]);
+  const lines = [cols.join(",")];
+  telemetryRows.forEach(r => {
+    lines.push(Object.values(r).concat([surveyState.l1, surveyState.l2, surveyState.sam])
+      .map(value => `"${String(value).replace(/"/g, '""')}"`).join(","));
+  });
+  const blob = new Blob([lines.join("\n")], {type: "text/csv"});
+  const a = document.createElement("a");
+  const downloadUrl = URL.createObjectURL(blob);
+  a.href = downloadUrl;
+  a.download = `touchpoint_51comp_${telemetryRows[0].user_id}.csv`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+
+  const status = document.getElementById("submission-status");
+  if (!GOOGLE_APPS_SCRIPT_URL) {
+    status.textContent = "CSV downloaded. To submit to Sheets, set GOOGLE_APPS_SCRIPT_URL to your deployed Apps Script /exec URL.";
+    return;
+  }
+
+  const saveButton = document.querySelector('#screen-debrief button[onclick="saveTelemetryCSV()"]');
+  submissionInProgress = true;
+  saveButton.disabled = true;
+  status.textContent = "Sending anonymous telemetry to Google Sheets…";
+  try {
+    const endpoint = new URL(GOOGLE_APPS_SCRIPT_URL);
+    if (endpoint.protocol !== "https:") throw new Error("The Apps Script URL must use HTTPS.");
+
+    await fetch(endpoint.href, {
+      method: "POST",
+      mode: "no-cors",
+      headers: {"Content-Type": "text/plain;charset=UTF-8"},
+      body: JSON.stringify({telemetryRows, survey: surveyState})
+    });
+    submissionAttempted = true;
+    status.textContent = "Submission request sent. The browser cannot confirm that Apps Script wrote the rows; check the GameTelemetry tab.";
+  } catch (error) {
+    status.textContent = `CSV downloaded, but the Sheets request failed: ${error.message}`;
+  } finally {
+    submissionInProgress = false;
+    saveButton.disabled = false;
+  }
+}
+</script>
+</body>
+</html>
