@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Print & Save: 51-Composition Touchpoint Accessibility Game</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
   :root {
     --bg: #0F172A; --card: #1E293B; --text: #F8FAFC; --muted: #94A3B8;
@@ -18,23 +19,26 @@
   .card { background: var(--card); border: 1px solid #334155; border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
   .btn { padding: 10px 18px; border: none; border-radius: 8px; background: var(--blue); color: #FFF; font-weight: 700; cursor: pointer; font-size: 14px; transition: transform 0.1s, opacity 0.1s; }
   .btn:hover { opacity: 0.92; transform: translateY(-1px); }
+  .btn-skip { padding: 7px 14px; border: 1px solid #64748B; border-radius: 8px; background: #0F172A; color: #CBD5E1; font-weight: 700; cursor: pointer; font-size: 12.5px; transition: all 0.12s; }
+  .btn-skip:hover { border-color: var(--amber); color: var(--amber); }
   .canvas-wrap { background: #FFFFFF; border-radius: 10px; border: 2px solid #CBD5E1; padding: 6px; position: relative; text-align: center; }
   canvas { display: block; margin: 0 auto; max-width: 100%; cursor: pointer; border-radius: 6px; }
-  .step-indicator { display: inline-flex; gap: 10px; align-items: center; background: #0F172A; padding: 6px 14px; border-radius: 99px; font-size: 13px; font-weight: 700; border: 1px solid #334155; }
-  .step-pill { padding: 3px 10px; border-radius: 99px; background: #334155; color: #CBD5E1; }
+  .step-indicator { display: inline-flex; gap: 8px; align-items: center; background: #0F172A; padding: 6px 12px; border-radius: 99px; font-size: 12.5px; font-weight: 700; border: 1px solid #334155; }
+  .step-pill { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px; background: #334155; color: #CBD5E1; }
   .step-pill.active { background: var(--amber); color: #0F172A; font-weight: 900; }
   .step-pill.done { background: var(--green); color: #052E16; }
-  .wager-bar { display: flex; gap: 6px; justify-content: center; margin-top: 10px; flex-wrap: wrap; }
-  .star-btn { flex: 1; min-width: 110px; padding: 8px 6px; border-radius: 8px; border: 1.5px solid #475569; background: #0F172A; color: #FFF; cursor: pointer; font-weight: 700; font-size: 12px; text-align: center; }
-  .star-btn:hover { border-color: var(--amber); background: #1E293B; }
+  .conf-bar { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+  .conf-btn { padding: 11px 10px; border-radius: 10px; border: 2px solid #475569; background: #0F172A; color: #FFF; cursor: pointer; font-weight: 800; font-size: 14px; text-align: center; transition: all 0.12s; }
+  .conf-btn.sure:hover { border-color: var(--green); background: rgba(16,185,129,0.16); color: #6EE7B7; }
+  .conf-btn.somewhat:hover { border-color: var(--amber); background: rgba(245,158,11,0.16); color: #FCD34D; }
+  .conf-btn.notsure:hover { border-color: var(--red); background: rgba(239,68,68,0.16); color: #FCA5A5; }
   .sam-grid { display: grid; grid-template-columns: repeat(9, 1fr); gap: 5px; margin: 8px 0 12px; }
-  .sam-btn { background: #0F172A; border: 2px solid #334155; border-radius: 8px; padding: 5px 2px; cursor: pointer; text-align: center; font-size: 11px; }
+  .sam-btn { background: #0F172A; border: 2px solid #334155; border-radius: 8px; padding: 6px 2px; cursor: pointer; text-align: center; font-size: 11px; }
   .sam-btn.active { border-color: var(--cyan); background: rgba(6,182,212,0.2); }
-  .pill-row { display: flex; gap: 5px; margin: 4px 0 10px; }
-  .pill { flex: 1; padding: 6px; text-align: center; background: #0F172A; border: 1px solid #334155; border-radius: 6px; cursor: pointer; font-weight: 700; font-size: 12px; }
+  .pill-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 4px 0 10px; }
+  .pill { padding: 8px; text-align: center; background: #0F172A; border: 1.5px solid #334155; border-radius: 8px; cursor: pointer; font-weight: 700; font-size: 12.5px; }
   .pill.active { background: var(--blue); border-color: var(--cyan); }
   .hidden { display: none !important; }
-  /* CVD / Low-Vision Accessibility Filters */
   .filter-deutan { filter: url(#deutan-filter); }
   .filter-protan { filter: url(#protan-filter); }
   .filter-blur { filter: blur(1.1px) contrast(0.82); }
@@ -47,7 +51,6 @@
 </head>
 <body>
 
-<!-- SVG Viénot/Machado Dichromatic Colour-Blindness Filters -->
 <svg style="position:absolute; width:0; height:0;" aria-hidden="true">
   <defs>
     <filter id="deutan-filter">
@@ -63,7 +66,7 @@
   <div>LOGGED USER<span class="hud-val" id="hud-user">P01</span></div>
   <div>5-MIN TIMER<span class="hud-val" id="hud-clock" style="color:var(--amber);">05:00</span></div>
   <div>COMPOSITION<span class="hud-val" id="hud-comp">Login</span></div>
-  <div>ACCESSIBILITY<span class="hud-val" id="hud-acc" style="color:var(--green);">100%</span></div>
+  <div>ACCESSIBILITY<span class="hud-val" id="hud-acc" style="color:var(--green);">--</span></div>
   <div>STREAK<span class="hud-val" id="hud-streak">1x</span></div>
   <div>SCORE<span class="hud-val" id="hud-score">0</span></div>
 </div>
@@ -73,11 +76,11 @@
 <div id="screen-login" class="card no-print">
   <h2 style="margin:0 0 6px; color:var(--cyan);">User Login: 51-Composition "Print &amp; Save" Accessibility Arcade</h2>
   <p style="margin:0 0 10px; font-size:13px; color:var(--muted);">
-    While logged in, your task on every composition card (<strong>C01–C51</strong>) is to execute the two-step document workflow:
-    <strong style="color:var(--amber);">Step 1: Click [ PRINT ] &rarr; Step 2: Click [ SAVE ]</strong> while avoiding <em>Share</em>, <em>Delete</em>, and background word clutter. At completion, you will <strong>Print</strong> your Accessibility Audit Report and <strong>Save</strong> your CSV telemetry file.
+    While logged in, complete the two-step workflow on each composition (<strong>C01–C51</strong>):
+    <strong style="color:var(--amber);">Step 1: [ PRINT ] &rarr; Step 2: [ SAVE ]</strong> while avoiding <em>Share</em>, <em>Delete</em>, and background clutter (or press <strong>Skip</strong> to move past any item). At the end, <strong>Print</strong> your Accessibility Audit Report and <strong>Save</strong> your CSV file.
   </p>
   <div style="background:#0F172A; padding:9px 12px; border-radius:8px; font-size:11.5px; color:var(--muted); margin-bottom:12px; line-height:1.4;">
-    <strong>Ethical Research &amp; Informed Consent (Muratovski Ch. 3.9):</strong> Participation takes under 5 minutes, is voluntary (withdraw anytime without penalty), involves minimal everyday screen risk, and logs strictly anonymous telemetry (`user_id` only) to calibrate computable touchpoint accessibility.
+    <strong>Ethical Research &amp; Informed Consent (Muratovski Ch. 3.9):</strong> Participation takes under 5 minutes, is voluntary (withdraw or skip anytime without penalty), involves minimal everyday screen risk, and logs strictly anonymous telemetry (`user_id` only) to calibrate computable touchpoint accessibility.
   </div>
   <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap:10px; margin-bottom:12px;">
     <label style="font-size:12px; font-weight:700;">Login User ID:
@@ -98,9 +101,26 @@
       </select>
     </label>
   </div>
-  <div style="display:flex; justify-content:space-between; align-items:center;">
+
+  <!-- PDF & Image Custom Visuals Loader -->
+  <div style="background:#0F172A; border:1px dashed #475569; border-radius:8px; padding:10px 12px; margin-bottom:12px; font-size:12px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+      <div>
+        <strong style="color:var(--cyan);">PDF / Image Visuals Override (Optional):</strong>
+        <span id="custom-vis-status" style="color:var(--muted);">Using built-in C01–C51 renderer (upload a .pdf or C01–C51 images to override)</span>
+      </div>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <label style="color:var(--muted);">Multi-page PDF starts at:
+          <select id="inp-pdf-start" style="padding:3px 6px; border-radius:5px; background:#1E293B; color:#FFF; border:1px solid #475569;"></select>
+        </label>
+        <input type="file" id="inp-custom-visuals" multiple accept=".pdf,image/*" style="font-size:11.5px; color:#CBD5E1;">
+      </div>
+    </div>
+  </div>
+
+  <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
     <label style="font-size:13px; cursor:pointer;"><input type="checkbox" id="chk-consent" checked> I consent to logged-in telemetry recording</label>
-    <button class="btn" style="background:var(--green); color:#052E16;" onclick="loginAndStart()">LOGIN &amp; START PRINT&rarr;SAVE GAME &#9654;</button>
+    <button class="btn" style="background:var(--green); color:#052E16;" onclick="loginAndStart()">LOGIN &amp; START PRINT &rarr; SAVE GAME &#9654;</button>
   </div>
 </div>
 
@@ -111,11 +131,14 @@
       <span id="comp-badge" style="background:#0F172A; color:var(--cyan); padding:4px 10px; border-radius:6px; font-weight:800; font-size:13px;">C01</span>
       <span id="comp-title" style="font-weight:700; font-size:15px; margin-left:6px;">Blank outlined blocks</span>
     </div>
-    <div class="step-indicator">
-      <span>Logged-In Task:</span>
-      <span id="pill-step1" class="step-pill active">STEP 1: CLICK PRINT</span>
-      <span>&rarr;</span>
-      <span id="pill-step2" class="step-pill">STEP 2: CLICK SAVE</span>
+    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+      <div class="step-indicator">
+        <span>Sequence:</span>
+        <span id="pill-step1" class="step-pill active">1. PRINT</span>
+        <span>&rarr;</span>
+        <span id="pill-step2" class="step-pill">2. SAVE</span>
+      </div>
+      <button class="btn-skip" id="btn-skip" onclick="skipTrial()">&#9197; Skip</button>
     </div>
   </div>
 
@@ -123,17 +146,15 @@
     <canvas id="comp-canvas" width="780" height="340"></canvas>
   </div>
 
-  <!-- 1-CLICK BRIER CONFIDENCE WAGER BAR -->
-  <div id="wager-box" class="hidden" style="margin-top:10px; padding-top:8px; border-top:1px solid #334155;">
-    <div style="text-align:center; font-size:12.5px; font-weight:700; color:var(--amber);">
-      Sequence Logged! Tap Your Confidence Shield (Proper Brier Bonus up to +50 pts):
+  <!-- 3-OPTION CONFIDENCE CHECK -->
+  <div id="wager-box" class="hidden" style="margin-top:10px; padding-top:10px; border-top:1px solid #334155;">
+    <div style="text-align:center; font-size:13px; font-weight:700; color:var(--amber);">
+      Sequence Logged! How confident are you in your Print &rarr; Save choice?
     </div>
-    <div class="wager-bar">
-      <div class="star-btn" onclick="recordBrier(0.20)">&#9733;&#9734;&#9734;&#9734;&#9734; 20%</div>
-      <div class="star-btn" onclick="recordBrier(0.40)">&#9733;&#9733;&#9734;&#9734;&#9734; 40%</div>
-      <div class="star-btn" onclick="recordBrier(0.60)">&#9733;&#9733;&#9733;&#9734;&#9734; 60%</div>
-      <div class="star-btn" onclick="recordBrier(0.80)">&#9733;&#9733;&#9733;&#9733;&#9734; 80%</div>
-      <div class="star-btn" onclick="recordBrier(1.00)">&#9733;&#9733;&#9733;&#9733;&#9733; 100%</div>
+    <div class="conf-bar">
+      <div class="conf-btn sure" onclick="recordConfidence('Sure', 0.90)">&#10003; Sure</div>
+      <div class="conf-btn somewhat" onclick="recordConfidence('Somewhat Sure', 0.60)">~ Somewhat Sure</div>
+      <div class="conf-btn notsure" onclick="recordConfidence('Not Sure', 0.25)">? Not Sure</div>
     </div>
   </div>
 </div>
@@ -144,16 +165,16 @@
   <p id="summary-banner" style="font-size:13.5px; color:var(--muted); margin:0 0 12px;"></p>
 
   <div class="no-print">
-    <div style="font-size:12.5px; font-weight:700;">1. SAM Affective Valence (1=Stressed by Clutter/Conflict to 9=Reassured by Clear Sequence):</div>
+    <div style="font-size:12.5px; font-weight:700;">1. SAM Affective Valence (1 = Stressed by Clutter/Conflict to 9 = Reassured by Clear Sequence):</div>
     <div id="sam-box" class="sam-grid"></div>
 
     <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
       <div>
-        <div style="font-size:12px; font-weight:700;">2. Step 1&rarr;2 Cues Aided Handoff (Likert 1–5):</div>
+        <div style="font-size:12px; font-weight:700;">2. Did step cues &amp; icons help you complete Print &rarr; Save?</div>
         <div class="pill-row" data-k="l1"></div>
       </div>
       <div>
-        <div style="font-size:12px; font-weight:700;">3. Swapped Icons/Arrows Caused Hesitation (1–5):</div>
+        <div style="font-size:12px; font-weight:700;">3. Did swapped icons or reversed arrows cause hesitation?</div>
         <div class="pill-row" data-k="l2"></div>
       </div>
     </div>
@@ -173,10 +194,12 @@
 </div>
 
 <script>
-// Paste the deployed Apps Script web app's /exec URL here to enable anonymous Sheets submission.
 const GOOGLE_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx4kMYh9vE5CfkWoNQO5thqlSOs1IFsv4sMvTk9QGpE3tGZQqqn7GPCYN2-gfoV1nct/exec";
 
-// Complete 51-Composition Specification Catalog (C01 to C51) matching uploaded sheets
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
 const COMP_CATALOG = [
   {id:"C01", name:"Blank outlined blocks", fam:"Modality", text:"none", icon:"none", border:"solid", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
   {id:"C02", name:"Text only", fam:"Modality", text:"normal", icon:"none", border:"none", seq:"none", clutter:0, cr:16.29, pop:0, stroop:0},
@@ -231,7 +254,6 @@ const COMP_CATALOG = [
   {id:"C51", name:"Competing visual emphases", fam:"Clutter", text:"normal", icon:"normal", border:"competing", seq:"both", clutter:22, cr:4.54, pop:0, stroop:0}
 ];
 
-// Stratified 24-Composition Core Subset (4 per family) for rapid 2.8-min run
 const SPRINT_24_IDS = [
   "C01","C03","C04","C05", "C06","C09","C10","C12", "C14","C15","C16","C19",
   "C21","C22","C26","C27", "C30","C31","C34","C37", "C38","C42","C48","C49"
@@ -239,12 +261,157 @@ const SPRINT_24_IDS = [
 
 const CLUTTER_WORDS = ["Help","Zoom","Tools","View","Edit","Copy","Move","Arrange","Insert","Draw","Undo","Setup","Find","Layer"];
 
-let activeDeck = [], curIdx = 0, stepPhase = 1, activeBoxes = [], activeClutter = [];
-let tTrialStart = 0, tPrintClick = 0, firstMoveDone = 0, faCount = 0;
+let activeDeck = [], curIdx = 0, stepPhase = 1, activeBoxes = [];
+let tTrialStart = 0, tPrintSelect = 0, firstMoveDone = 0, faCount = 0;
 let mPrintPass = 0, sPrintPass = 0, hSeqPass = 0, sSavePass = 0, pendingTelemetry = null;
 let totalScore = 0, streak = 1, remainSec = 300, timerRef = null;
-let surveyState = {sam: 8, l1: 5, l2: 4};
+let surveyState = {sam: 8, l1: "Sure", l2: "Somewhat Sure"};
 const telemetryRows = [];
+const customVisuals = {};
+const customBoxes = {};
+
+const startSel = document.getElementById("inp-pdf-start");
+COMP_CATALOG.forEach((c, idx) => {
+  const opt = document.createElement("option");
+  opt.value = idx;
+  opt.textContent = c.id;
+  startSel.appendChild(opt);
+});
+
+async function renderPdfPageToVisual(pdfDoc, pageNum, canvasW, canvasH) {
+  const page = await pdfDoc.getPage(pageNum);
+  const baseVp = page.getViewport({ scale: 1.0 });
+  const scale = Math.min(canvasW / baseVp.width, canvasH / baseVp.height);
+  const vp = page.getViewport({ scale });
+
+  const tmp = document.createElement("canvas");
+  tmp.width = Math.ceil(vp.width);
+  tmp.height = Math.ceil(vp.height);
+  await page.render({ canvasContext: tmp.getContext("2d"), viewport: vp }).promise;
+
+  const out = document.createElement("canvas");
+  out.width = canvasW;
+  out.height = canvasH;
+  const octx = out.getContext("2d");
+  octx.fillStyle = "#FFFFFF";
+  octx.fillRect(0, 0, canvasW, canvasH);
+  const offsetX = (canvasW - vp.width) / 2;
+  const offsetY = (canvasH - vp.height) / 2;
+  octx.drawImage(tmp, offsetX, offsetY);
+
+  let detectedCid = null;
+  const foundBoxes = {};
+  try {
+    const tc = await page.getTextContent();
+    for (const item of tc.items) {
+      const s = (item.str || "").trim();
+      if (!s) continue;
+      const m = pdfjsLib.Util.transform(vp.transform, item.transform);
+      const vx = offsetX + m[4];
+      const vy = offsetY + m[5];
+      const vw = Math.max(24, (item.width || 30) * vp.scale);
+      const vh = Math.max(12, Math.hypot(m[2], m[3]) || (item.height || 14) * vp.scale);
+
+      const idMatch = s.match(/\b(C(?:0[1-9]|[1-4]\d|5[01]))\b/i);
+      if (idMatch && !detectedCid && vy < 90) {
+        detectedCid = idMatch[1].toUpperCase();
+      }
+
+      if (s.length <= 16 && !/\bC\d{2}\b/i.test(s) && vy > 34) {
+        const roleMatch = s.match(/\b(Print|Save|Share|Delete)\b/i);
+        if (roleMatch) {
+          const role = roleMatch[1].charAt(0).toUpperCase() + roleMatch[1].slice(1).toLowerCase();
+          foundBoxes[role] = {
+            x: vx + vw / 2,
+            y: vy - vh / 2,
+            w: Math.max(120, vw + 72),
+            h: Math.max(50, vh + 34),
+            rot: 0,
+            oval: false,
+            role
+          };
+        }
+      }
+    }
+  } catch (e) {}
+
+  const boxList = Object.values(foundBoxes);
+  const hasCore = Boolean(foundBoxes.Print && foundBoxes.Save);
+  return { canvas: out, detectedCid, boxes: hasCore ? boxList : null };
+}
+
+document.getElementById("inp-custom-visuals").addEventListener("change", async (ev) => {
+  const files = Array.from(ev.target.files || []);
+  const statusEl = document.getElementById("custom-vis-status");
+  if (!files.length) return;
+  statusEl.innerText = "Loading custom visuals...";
+
+  for (const f of files) {
+    const isPdf = f.type === "application/pdf" || f.name.toLowerCase().endsWith(".pdf");
+    const nameMatch = f.name.toUpperCase().match(/(C(?:0[1-9]|[1-4]\d|5[01]))/);
+
+    if (isPdf) {
+      if (!window.pdfjsLib) {
+        statusEl.innerText = "PDF.js library unavailable offline; image files and built-in C01–C51 renderer still work.";
+        continue;
+      }
+      try {
+        const typedArray = new Uint8Array(await f.arrayBuffer());
+        let pdfDoc;
+        try {
+          pdfDoc = await pdfjsLib.getDocument({
+            data: typedArray,
+            disableWorker: window.location.protocol === "file:"
+          }).promise;
+        } catch (workerErr) {
+          pdfDoc = await pdfjsLib.getDocument({ data: typedArray, disableWorker: true }).promise;
+        }
+
+        const startIdx = parseInt(document.getElementById("inp-pdf-start").value || "0", 10);
+        for (let p = 1; p <= pdfDoc.numPages; p++) {
+          const res = await renderPdfPageToVisual(pdfDoc, p, 780, 340);
+          let targetCid = null;
+          if (pdfDoc.numPages === 1 && nameMatch) {
+            targetCid = nameMatch[1];
+          } else if (res.detectedCid) {
+            targetCid = res.detectedCid;
+          } else if (startIdx + p - 1 < COMP_CATALOG.length) {
+            targetCid = COMP_CATALOG[startIdx + p - 1].id;
+          }
+          if (targetCid) {
+            customVisuals[targetCid] = res.canvas;
+            if (res.boxes) customBoxes[targetCid] = res.boxes;
+          }
+        }
+      } catch (err) {
+        statusEl.innerText = `Error reading PDF ${f.name}: ${err.message}`;
+        return;
+      }
+    } else if (nameMatch) {
+      const cid = nameMatch[1];
+      await new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => {
+          const off = document.createElement("canvas");
+          off.width = 780; off.height = 340;
+          const octx = off.getContext("2d");
+          octx.fillStyle = "#FFFFFF";
+          octx.fillRect(0, 0, 780, 340);
+          const sc = Math.min(780 / img.width, 340 / img.height);
+          const dw = img.width * sc, dh = img.height * sc;
+          octx.drawImage(img, (780 - dw) / 2, (340 - dh) / 2, dw, dh);
+          customVisuals[cid] = off;
+          resolve();
+        };
+        img.onerror = resolve;
+        img.src = URL.createObjectURL(f);
+      });
+    }
+  }
+
+  const totalLoaded = Object.keys(customVisuals).length;
+  statusEl.innerText = `Loaded ${totalLoaded} custom visual(s) (${Object.keys(customBoxes).length} with auto-detected PDF hitboxes)`;
+});
 
 function loginAndStart() {
   if (!document.getElementById("chk-consent").checked) { alert("Please confirm consent to log in."); return; }
@@ -271,6 +438,7 @@ function loginAndStart() {
     const m = String(Math.floor(remainSec / 60)).padStart(2, "0");
     const s = String(remainSec % 60).padStart(2, "0");
     document.getElementById("hud-clock").innerText = `${m}:${s}`;
+    if (remainSec === 0) document.getElementById("hud-clock").style.color = "#EF4444";
   }, 1000);
 
   initDebriefPills();
@@ -295,65 +463,79 @@ function drawControlIcon(ctx, type, x, y, color) {
   ctx.restore();
 }
 
-function loadCompositionTrial() {
-  if (curIdx >= activeDeck.length) {
-    finishSession();
-    return;
-  }
-  const comp = activeDeck[curIdx];
-  document.getElementById("hud-comp").innerText = `${comp.id} (${curIdx+1}/${activeDeck.length})`;
-  document.getElementById("comp-badge").innerText = comp.id;
-  document.getElementById("comp-title").innerText = comp.name;
-  document.getElementById("prog-bar").style.width = `${((curIdx / activeDeck.length) * 100).toFixed(1)}%`;
-  document.getElementById("wager-box").classList.add("hidden");
+function buildActiveBoxes(comp) {
+  if (customBoxes[comp.id]) return customBoxes[comp.id];
 
-  stepPhase = 1; faCount = 0; firstMoveDone = 0;
-  mPrintPass = 0; sPrintPass = 0; hSeqPass = 0; sSavePass = 0;
-  document.getElementById("pill-step1").className = "step-pill active";
-  document.getElementById("pill-step2").className = "step-pill";
-
-  const canvas = document.getElementById("comp-canvas");
-  const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Build 4 button positions (Hierarchy C10 vs Standard 2x2 Grid with slight per-trial permutation)
-  const roles = ["Share", "Save", "Delete", "Print"];
-  const iconMap = {Share:"Share", Save:"Save", Delete:"Delete", Print:"Print"};
-  if (comp.icon === "conflict") {
-    iconMap.Share = "Print"; iconMap.Save = "Delete"; iconMap.Delete = "Share"; iconMap.Print = "Save";
-  } else if (comp.icon === "mixed") {
-    iconMap.Delete = "Print"; iconMap.Print = "Delete";
-  }
-
-  let coords = [
+  const coords = [
     {x: 230, y: 105, w: 150, h: 58, rot: 0, oval: false},
     {x: 550, y: 105, w: 150, h: 58, rot: 0, oval: false},
     {x: 230, y: 235, w: 150, h: 58, rot: 0, oval: false},
     {x: 550, y: 235, w: 150, h: 58, rot: 0, oval: false}
   ];
 
-  // Rotate role assignment slightly across trials so C01 isn't purely memorized, while keeping C10 stacked
-  const perm = (curIdx % 2 === 0) ? ["Share","Save","Delete","Print"] : ["Print","Share","Delete","Save"];
+  let perm = ["Share", "Save", "Delete", "Print"];
+  const mapById = {
+    C06: ["Print", "Save", "Share", "Delete"],
+    C08: ["Share", "Print", "Delete", "Save"],
+    C09: ["Save", "Print", "Delete", "Share"],
+    C11: ["Share", "Save", "Print", "Delete"],
+    C12: ["Print", "Save", "Delete", "Share"],
+    C13: ["Delete", "Share", "Print", "Save"],
+    C17: ["Save", "Print", "Share", "Delete"],
+    C18: ["Print", "Delete", "Save", "Share"],
+    C19: ["Print", "Share", "Delete", "Save"],
+    C25: ["Delete", "Share", "Save", "Print"],
+    C26: ["Save", "Share", "Print", "Delete"],
+    C27: ["Share", "Print", "Save", "Delete"],
+    C28: ["Print", "Delete", "Share", "Save"],
+    C31: ["Print", "Delete", "Share", "Save"],
+    C33: ["Print", "Delete", "Share", "Save"],
+    C34: ["Delete", "Save", "Print", "Share"],
+    C35: ["Share", "Delete", "Save", "Print"],
+    C36: ["Save", "Delete", "Share", "Print"],
+    C37: ["Delete", "Print", "Save", "Share"]
+  };
+  if (mapById[comp.id]) perm = mapById[comp.id];
+
   if (comp.id === "C10") {
-    coords = [
-      {x: 390, y: 290, w: 110, h: 36, rot: 0, oval: false, role:"Share"},
+    return [
+      {x: 230, y: 292, w: 110, h: 36, rot: 0, oval: false, role:"Share"},
       {x: 390, y: 175, w: 175, h: 56, rot: 0, oval: false, role:"Save"},
-      {x: 560, y: 290, w: 110, h: 36, rot: 0, oval: false, role:"Delete"},
+      {x: 550, y: 292, w: 110, h: 36, rot: 0, oval: false, role:"Delete"},
       {x: 390, y: 80,  w: 175, h: 56, rot: 0, oval: false, role:"Print"}
     ];
-  } else {
-    coords.forEach((c, i) => {
-      c.role = perm[i];
-      if (comp.border === "tilted" || comp.clutter > 0) c.rot = (i % 2 === 0 ? -0.11 : 0.09);
-      if (comp.border === "oval") c.oval = true;
-      if (comp.border === "mixed_shape") c.oval = (i % 2 === 1);
-      if (comp.border === "tangle") { c.x = 340 + (i*35); c.y = 135 + ((i%2)*45); c.w = 95; c.h = 38; }
-    });
   }
-  activeBoxes = coords;
 
-  // Render Background Clutter Words (C20-C24, C38-C51)
-  activeClutter = [];
+  coords.forEach((c, i) => {
+    c.role = perm[i];
+    if (comp.border === "tilted" || (comp.clutter > 0 && comp.id !== "C38" && comp.id !== "C39")) {
+      c.rot = (i % 2 === 0 ? -0.11 : 0.09);
+    }
+    if (comp.border === "oval") c.oval = true;
+    if (comp.border === "mixed_shape") c.oval = (i % 2 === 1);
+    if (comp.border === "tangle") {
+      c.x = 320 + (i * 42);
+      c.y = 135 + ((i % 2) * 48);
+      c.w = 95; c.h = 38;
+    }
+  });
+  return coords;
+}
+
+function renderProceduralComposition(ctx, canvas, comp) {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#FFFFFF";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const iconMap = {Share:"Share", Save:"Save", Delete:"Delete", Print:"Print"};
+  if (comp.icon === "conflict") {
+    iconMap.Share = "Print"; iconMap.Save = "Delete"; iconMap.Delete = "Share"; iconMap.Print = "Save";
+  } else if (comp.text === "conflict") {
+    iconMap.Print = "Share"; iconMap.Delete = "Save"; iconMap.Share = "Delete"; iconMap.Save = "Print";
+  } else if (comp.icon === "mixed") {
+    iconMap.Delete = "Print"; iconMap.Print = "Delete";
+  }
+
   if (comp.clutter > 0) {
     ctx.save();
     for (let k = 0; k < comp.clutter; k++) {
@@ -361,23 +543,20 @@ function loadCompositionTrial() {
       let wx = 70 + ((k * 137) % 640);
       let wy = 40 + ((k * 89) % 265);
       if (comp.id === "C40") { wx = 110 + (k % 5) * 135; wy = 55 + Math.floor(k / 5) * 68; }
-      if (comp.id === "C44") { wx = 120 + k * 22; wy = 45 + k * 10 + (k%3)*8; }
+      if (comp.id === "C44") { wx = 120 + k * 22; wy = 45 + k * 10 + (k % 3) * 8; }
       const fSize = (comp.id === "C47" && k % 3 === 0) ? 20 : 12;
       ctx.font = `${fSize}px sans-serif`;
       ctx.fillStyle = "#64748B";
       ctx.fillText(wTxt, wx, wy);
-      activeClutter.push({x: wx, y: wy - 10, w: 46, h: 16});
     }
     ctx.restore();
   }
 
-  // Render 4 Action Boxes
   activeBoxes.forEach((b, idx) => {
     ctx.save();
     ctx.translate(b.x, b.y);
     ctx.rotate(b.rot);
 
-    // Determine Border Style & Colour
     let strokeCol = "#334155", lineW = 1.5, doStroke = true;
     if (comp.border === "none" || comp.border === "diagonal_stream" || comp.border === "tangle") doStroke = false;
     if (comp.border === "faint") strokeCol = "#E2E8F0";
@@ -391,6 +570,7 @@ function loadCompositionTrial() {
     if (comp.border === "shared_blue" || (comp.border === "one_accent" && b.role === "Print")) { strokeCol = "#2563EB"; lineW = 2.4; }
     if (comp.border === "isolum") strokeCol = ["#2563EB","#16A34A","#D97706","#9333EA"][idx];
     if (comp.border === "one_dark" && b.role === "Print") { strokeCol = "#0F172A"; lineW = 3.2; }
+    if (comp.border === "competing" && idx < 3) { strokeCol = ["#2563EB","#DC2626","#0F172A"][idx]; lineW = 2.6; }
     if (comp.border === "all_sat") { strokeCol = ["#0284C7","#E11D48","#7C3AED","#059669"][idx]; lineW = 2.5; }
     if (comp.border === "weak_task" && (b.role === "Print" || b.role === "Save")) strokeCol = "#E2E8F0";
     if (comp.border === "bold_irrel" && (b.role === "Share" || b.role === "Delete")) { strokeCol = "#0F172A"; lineW = 3.2; }
@@ -406,7 +586,6 @@ function loadCompositionTrial() {
       }
     }
 
-    // Text & Icon Content
     let txtCol = "#1E293B";
     if (comp.text === "faint") txtCol = "#E2E8F0";
     if (comp.border === "muted_irrel" && (b.role === "Share" || b.role === "Delete")) txtCol = "#CBD5E1";
@@ -419,15 +598,9 @@ function loadCompositionTrial() {
       ctx.fillStyle = txtCol;
       ctx.font = "600 15px system-ui, sans-serif";
       ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      let dispTxt = b.role;
-      if (comp.text === "conflict") {
-        const swap = {Print:"Share", Save:"Delete", Share:"Print", Delete:"Save"};
-        dispTxt = swap[b.role];
-      }
-      ctx.fillText(dispTxt, comp.icon === "none" ? 0 : 12, 0);
+      ctx.fillText(b.role, comp.icon === "none" ? 0 : 12, 0);
     }
 
-    // Intruding clutter words inside/crossing boundary (C42, C43)
     if (comp.border === "intrude_in" || comp.border === "intrude_cross") {
       ctx.fillStyle = "#64748B"; ctx.font = "11px sans-serif";
       ctx.fillText("Tools", -b.w/3, -b.h/2 + (comp.border === "intrude_cross" ? 2 : 12));
@@ -436,7 +609,6 @@ function loadCompositionTrial() {
     ctx.restore();
   });
 
-  // Render Sequence Cues (Step Numbers 1, 2 and Connecting Arrow between Print and Save)
   const pBox = activeBoxes.find(b => b.role === "Print");
   const sBox = activeBoxes.find(b => b.role === "Save");
   if (comp.seq !== "none" && pBox && sBox) {
@@ -461,81 +633,117 @@ function loadCompositionTrial() {
       const ex = toB.x - Math.cos(angle)*(toB.w/2 + 8);
       const ey = toB.y - Math.sin(angle)*(toB.h/2 + 8);
       ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(ex, ey); ctx.stroke();
-      // Arrowhead at target
+
       ctx.beginPath();
       ctx.moveTo(ex, ey);
       ctx.lineTo(ex - 9*Math.cos(angle - 0.4), ey - 9*Math.sin(angle - 0.4));
       ctx.lineTo(ex - 9*Math.cos(angle + 0.4), ey - 9*Math.sin(angle + 0.4));
       ctx.closePath(); ctx.fill();
+
+      if (comp.seq === "bi_arrow") {
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + 9*Math.cos(angle - 0.4), sy + 9*Math.sin(angle - 0.4));
+        ctx.lineTo(sx + 9*Math.cos(angle + 0.4), sy + 9*Math.sin(angle + 0.4));
+        ctx.closePath(); ctx.fill();
+      }
     }
     ctx.restore();
+  }
+}
+
+function loadCompositionTrial() {
+  if (curIdx >= activeDeck.length) {
+    finishSession();
+    return;
+  }
+  const comp = activeDeck[curIdx];
+  document.getElementById("hud-comp").innerText = `${comp.id} (${curIdx+1}/${activeDeck.length})`;
+  document.getElementById("comp-badge").innerText = comp.id;
+  document.getElementById("comp-title").innerText = comp.name;
+  document.getElementById("prog-bar").style.width = `${((curIdx / activeDeck.length) * 100).toFixed(1)}%`;
+  document.getElementById("wager-box").classList.add("hidden");
+  document.getElementById("btn-skip").disabled = false;
+
+  stepPhase = 1; faCount = 0; firstMoveDone = 0;
+  mPrintPass = 0; sPrintPass = 0; hSeqPass = 0; sSavePass = 0;
+  document.getElementById("pill-step1").className = "step-pill active";
+  document.getElementById("pill-step2").className = "step-pill";
+
+  const canvas = document.getElementById("comp-canvas");
+  const ctx = canvas.getContext("2d");
+  activeBoxes = buildActiveBoxes(comp);
+
+  if (customVisuals[comp.id]) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(customVisuals[comp.id], 0, 0, canvas.width, canvas.height);
+  } else {
+    renderProceduralComposition(ctx, canvas, comp);
   }
 
   tTrialStart = performance.now();
   canvas.onmousemove = () => { if (!firstMoveDone) firstMoveDone = 1; };
-  canvas.onclick = (e) => handleCanvasClick(e, comp);
+  canvas.onpointerdown = (e) => handleCanvasSelect(e, comp);
 }
 
-function handleCanvasClick(e, comp) {
+function handleCanvasSelect(e, comp) {
   if (!document.getElementById("wager-box").classList.contains("hidden")) return;
   const canvas = document.getElementById("comp-canvas");
   const r = canvas.getBoundingClientRect();
   const cx = (e.clientX - r.left) * (canvas.width / r.width);
   const cy = (e.clientY - r.top) * (canvas.height / r.height);
 
-  // Check if click landed inside any of the 4 action boxes
-  let clickedBox = null, cleanInside = 0;
+  let hitBox = null, cleanInside = 0;
   for (const b of activeBoxes) {
     if (Math.abs(cx - b.x) <= b.w/2 + 6 && Math.abs(cy - b.y) <= b.h/2 + 6) {
-      clickedBox = b;
+      hitBox = b;
       cleanInside = (Math.abs(cx - b.x) <= b.w/2 - 3 && Math.abs(cy - b.y) <= b.h/2 - 3) ? 1 : 0;
       break;
     }
   }
 
-  if (!clickedBox) {
+  if (!hitBox) {
     faCount++;
     return;
   }
 
   if (stepPhase === 1) {
-    // Logged-In Step 1: Must click PRINT
-    tPrintClick = performance.now();
-    if (clickedBox.role === "Print") {
+    tPrintSelect = performance.now();
+    if (hitBox.role === "Print") {
       mPrintPass = 1;
       sPrintPass = cleanInside;
-      stepPhase = 2;
       document.getElementById("pill-step1").className = "step-pill done";
-      document.getElementById("pill-step2").className = "step-pill active";
     } else {
       faCount++;
-      // Record sequence inversion or wrong first click, still advance to Step 2
-      mPrintPass = 0; sPrintPass = 0; stepPhase = 2;
+      mPrintPass = 0;
+      sPrintPass = 0;
       document.getElementById("pill-step1").className = "step-pill";
-      document.getElementById("pill-step2").className = "step-pill active";
     }
+    stepPhase = 2;
+    document.getElementById("pill-step2").className = "step-pill active";
   } else if (stepPhase === 2) {
-    // Logged-In Step 2: Must click SAVE
     const tNow = performance.now();
-    const rtPrint = Math.max(120, tPrintClick - tTrialStart);
-    const rtHandoff = Math.max(110, tNow - tPrintClick);
+    const rtPrint = Math.max(120, tPrintSelect - tTrialStart);
+    const rtHandoff = Math.max(110, tNow - tPrintSelect);
     const rtTotal = rtPrint + rtHandoff;
 
-    if (clickedBox.role === "Save") {
+    if (hitBox.role === "Save") {
       hSeqPass = mPrintPass ? 1 : 0;
       sSavePass = cleanInside;
     } else {
       faCount++;
-      hSeqPass = 0; sSavePass = 0;
+      hSeqPass = 0;
+      sSavePass = 0;
     }
 
     const pBox = activeBoxes.find(b => b.role === "Print");
     const sBox = activeBoxes.find(b => b.role === "Save");
-    const distPx = Math.hypot(sBox.x - pBox.x, sBox.y - pBox.y);
+    const distPx = (pBox && sBox) ? Math.hypot(sBox.x - pBox.x, sBox.y - pBox.y) : 320.0;
     const wEffPx = (comp.border === "intrude_in" || comp.border === "tangle") ? 18.0 : 48.0;
     const seqSuccess = (mPrintPass === 1 && hSeqPass === 1) ? 1 : 0;
 
-    // Compute per-composition Accessibility Score (0 to 100)
     const faTerm = Math.max(0, 1.0 - faCount / 4.0);
     const rtTerm = Math.max(0, 1.0 - (rtTotal - 450.0) / 4500.0);
     const accScore = 100.0 * (0.50 * seqSuccess + 0.25 * faTerm + 0.25 * Math.min(1.0, rtTerm));
@@ -566,6 +774,8 @@ function handleCanvasClick(e, comp) {
       selected_S_save: sSavePass,
       false_alarms_fa: faCount,
       sdt_outcome: seqSuccess ? "Hit" : (faCount > 0 ? "FA" : "Miss"),
+      trial_status: "Completed",
+      skipped: 0,
       rt_print_ms: rtPrint.toFixed(1),
       rt_handoff_ms: rtHandoff.toFixed(1),
       rt_total_ms: rtTotal.toFixed(1),
@@ -573,11 +783,62 @@ function handleCanvasClick(e, comp) {
       sequence_success: seqSuccess
     };
 
+    document.getElementById("btn-skip").disabled = true;
     document.getElementById("wager-box").classList.remove("hidden");
   }
 }
 
-function recordBrier(q) {
+function skipTrial() {
+  if (!document.getElementById("wager-box").classList.contains("hidden")) return;
+  const comp = activeDeck[curIdx];
+  const rtSkip = Math.max(50, performance.now() - tTrialStart);
+
+  let seqCode = 0;
+  if (["numbers","arrow","both","weak_both","med_both","strong_both"].includes(comp.seq)) seqCode = 1;
+  if (["rev_num","rev_arrow","bi_arrow","num_vs_arrow"].includes(comp.seq)) seqCode = -1;
+
+  telemetryRows.push({
+    user_id: document.getElementById("inp-uid").value || "P01",
+    vision_mode: document.getElementById("inp-vision").value,
+    game_mode: document.getElementById("inp-deck").value,
+    trial_index: curIdx + 1,
+    comp_id: comp.id,
+    comp_name: comp.name.replace(/,/g, " "),
+    comp_family: comp.fam,
+    contrast_ratio: comp.cr,
+    n_distractors: 3 + comp.clutter,
+    popout_flag: comp.pop,
+    stroop_conflict: comp.stroop,
+    seq_guidance: seqCode,
+    fitts_A_px: "NA",
+    fitts_W_eff_px: "NA",
+    discovered_D: firstMoveDone,
+    matched_M_print: mPrintPass,
+    selected_S_print: sPrintPass,
+    handoff_H_seq: 0,
+    selected_S_save: 0,
+    false_alarms_fa: faCount,
+    sdt_outcome: "Skip",
+    trial_status: "Skipped",
+    skipped: 1,
+    rt_print_ms: mPrintPass ? Math.max(100, tPrintSelect - tTrialStart).toFixed(1) : "NA",
+    rt_handoff_ms: "NA",
+    rt_total_ms: rtSkip.toFixed(1),
+    accessibility_score: "NA",
+    sequence_success: 0,
+    confidence_label: "Skipped",
+    confidence_q: "NA",
+    trial_payoff_pts: "0.0"
+  });
+
+  streak = 1;
+  document.getElementById("hud-streak").innerText = `${streak}x`;
+  updateAccHud();
+  curIdx++;
+  loadCompositionTrial();
+}
+
+function recordConfidence(label, q) {
   const y = pendingTelemetry.sequence_success;
   streak = y ? Math.min(5, streak + 1) : 1;
   const brierBonus = 50.0 * (1.0 - Math.pow(q - y, 2));
@@ -585,12 +846,13 @@ function recordBrier(q) {
   const pts = basePts + brierBonus;
   totalScore += pts;
 
+  pendingTelemetry.confidence_label = label;
   pendingTelemetry.confidence_q = q.toFixed(2);
   pendingTelemetry.trial_payoff_pts = pts.toFixed(1);
   telemetryRows.push(pendingTelemetry);
+  pendingTelemetry = null;
 
-  const meanAcc = telemetryRows.reduce((a, r) => a + parseFloat(r.accessibility_score), 0) / telemetryRows.length;
-  document.getElementById("hud-acc").innerText = `${meanAcc.toFixed(0)}%`;
+  updateAccHud();
   document.getElementById("hud-streak").innerText = `${streak}x`;
   document.getElementById("hud-score").innerText = Math.round(totalScore);
 
@@ -598,24 +860,46 @@ function recordBrier(q) {
   loadCompositionTrial();
 }
 
+function updateAccHud() {
+  const valid = telemetryRows.filter(r => r.accessibility_score !== "NA");
+  if (valid.length === 0) {
+    document.getElementById("hud-acc").innerText = "--";
+  } else {
+    const meanAcc = valid.reduce((a, r) => a + parseFloat(r.accessibility_score), 0) / valid.length;
+    document.getElementById("hud-acc").innerText = `${meanAcc.toFixed(0)}%`;
+  }
+}
+
 function finishSession() {
   clearInterval(timerRef);
+  document.getElementById("prog-bar").style.width = "100%";
   document.getElementById("screen-game").classList.add("hidden");
   document.getElementById("screen-debrief").classList.remove("hidden");
 
-  const meanAcc = telemetryRows.reduce((a, r) => a + parseFloat(r.accessibility_score), 0) / telemetryRows.length;
-  const passRate = (100 * telemetryRows.filter(r => r.sequence_success === 1).length / telemetryRows.length).toFixed(1);
-  document.getElementById("summary-banner").innerHTML =
-    `Logged-In User: <strong>${telemetryRows[0].user_id}</strong> (${telemetryRows[0].vision_mode}) &bull; ` +
-    `Compositions Tested: <strong>${telemetryRows.length}</strong> &bull; ` +
-    `Print&rarr;Save Pass Rate: <strong>${passRate}%</strong> &bull; ` +
-    `Mean Accessibility Index: <strong>${meanAcc.toFixed(1)} / 100</strong>`;
+  const completed = telemetryRows.filter(r => r.skipped === 0);
+  const skippedCount = telemetryRows.length - completed.length;
+  const meanAcc = completed.length
+    ? (completed.reduce((a, r) => a + parseFloat(r.accessibility_score), 0) / completed.length).toFixed(1)
+    : "NA";
+  const passRate = completed.length
+    ? (100 * completed.filter(r => r.sequence_success === 1).length / completed.length).toFixed(1)
+    : "0.0";
 
-  // Render printable summary table
+  const uid = telemetryRows.length ? telemetryRows[0].user_id : (document.getElementById("inp-uid").value || "P01");
+  const vMode = telemetryRows.length ? telemetryRows[0].vision_mode : document.getElementById("inp-vision").value;
+
+  document.getElementById("summary-banner").innerHTML =
+    `Logged-In User: <strong>${uid}</strong> (${vMode}) &bull; ` +
+    `Completed: <strong>${completed.length}</strong> &bull; ` +
+    `Skipped: <strong>${skippedCount}</strong> &bull; ` +
+    `Print&rarr;Save Pass Rate: <strong>${passRate}%</strong> &bull; ` +
+    `Mean Accessibility Index: <strong>${meanAcc}${meanAcc === "NA" ? "" : " / 100"}</strong>`;
+
   let html = `<table border="1" cellpadding="5" cellspacing="0" style="width:100%; border-collapse:collapse; text-align:left;">
-    <thead><tr><th>Comp ID</th><th>Name</th><th>Family</th><th>Print&rarr;Save</th><th>FA</th><th>RT Total (ms)</th><th>Accessibility</th><th>Brier q</th></tr></thead><tbody>`;
+    <thead><tr><th>Comp ID</th><th>Name</th><th>Family</th><th>Status</th><th>Print&rarr;Save</th><th>FA</th><th>RT Total (ms)</th><th>Accessibility</th><th>Confidence</th></tr></thead><tbody>`;
   telemetryRows.forEach(r => {
-    html += `<tr><td>${r.comp_id}</td><td>${r.comp_name}</td><td>${r.comp_family}</td><td>${r.sequence_success ? "PASS" : "FAIL"}</td><td>${r.false_alarms_fa}</td><td>${r.rt_total_ms}</td><td>${r.accessibility_score}%</td><td>${r.confidence_q}</td></tr>`;
+    const statusTxt = r.skipped ? "SKIPPED" : (r.sequence_success ? "PASS" : "FAIL");
+    html += `<tr><td>${r.comp_id}</td><td>${r.comp_name}</td><td>${r.comp_family}</td><td>${r.trial_status}</td><td>${statusTxt}</td><td>${r.false_alarms_fa}</td><td>${r.rt_total_ms}</td><td>${r.accessibility_score === "NA" ? "NA" : r.accessibility_score + "%"}</td><td>${r.confidence_label}</td></tr>`;
   });
   html += `</tbody></table>`;
   document.getElementById("print-summary-table").innerHTML = html;
@@ -623,10 +907,12 @@ function finishSession() {
 
 function initDebriefPills() {
   const sam = document.getElementById("sam-box");
+  sam.innerHTML = "";
   for (let i = 1; i <= 9; i++) {
     const d = document.createElement("div");
     d.className = "sam-btn" + (i === 8 ? " active" : "");
-    d.innerHTML = `<strong>${i}</strong>`;
+    const mouth = i < 4 ? "M8 17 Q12 13 16 17" : (i === 5 ? "M8 15 L16 15" : "M8 14 Q12 19 16 14");
+    d.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><path d="${mouth}"/></svg><div><strong>${i}</strong></div>`;
     d.onclick = () => {
       surveyState.sam = i;
       Array.from(sam.children).forEach(c => c.classList.remove("active"));
@@ -634,19 +920,21 @@ function initDebriefPills() {
     };
     sam.appendChild(d);
   }
+  const threeOpts = ["Sure", "Somewhat Sure", "Not Sure"];
   document.querySelectorAll(".pill-row").forEach(row => {
     const k = row.dataset.k;
-    for (let v = 1; v <= 5; v++) {
+    row.innerHTML = "";
+    threeOpts.forEach(opt => {
       const p = document.createElement("div");
-      p.className = "pill" + (surveyState[k] === v ? " active" : "");
-      p.innerText = v;
+      p.className = "pill" + (surveyState[k] === opt ? " active" : "");
+      p.innerText = opt;
       p.onclick = () => {
-        surveyState[k] = v;
+        surveyState[k] = opt;
         Array.from(row.children).forEach(c => c.classList.remove("active"));
         p.classList.add("active");
       };
       row.appendChild(p);
-    }
+    });
   });
 }
 
@@ -658,32 +946,32 @@ let submissionInProgress = false;
 let submissionAttempted = false;
 
 async function saveTelemetryCSV() {
+  if (!telemetryRows.length) { alert("No trials recorded."); return; }
   if (submissionInProgress || submissionAttempted) return;
 
-  const cols = Object.keys(telemetryRows[0]).concat(["likert_seq_aid","likert_stroop_hes","sam_valence"]);
-  const lines = [cols.join(",")];
+  const surveyColumns = ["debrief_cues_clear", "debrief_conflict_hesitation", "sam_valence"];
+  const cols = Array.from(new Set(telemetryRows.flatMap(row => Object.keys(row)))).concat(surveyColumns);
+  const lines = [cols.map(csvCell).join(",")];
   telemetryRows.forEach(r => {
-    lines.push(Object.values(r).concat([surveyState.l1, surveyState.l2, surveyState.sam])
-      .map(value => `"${String(value).replace(/"/g, '""')}"`).join(","));
+    lines.push(cols.map(column => csvCell(
+      column === "debrief_cues_clear" ? surveyState.l1 :
+      column === "debrief_conflict_hesitation" ? surveyState.l2 :
+      column === "sam_valence" ? surveyState.sam : (r[column] ?? "")
+    )).join(","));
   });
   const blob = new Blob([lines.join("\n")], {type: "text/csv"});
   const a = document.createElement("a");
   const downloadUrl = URL.createObjectURL(blob);
   a.href = downloadUrl;
   a.download = `touchpoint_51comp_${telemetryRows[0].user_id}.csv`;
-  a.click();
+  a.dispatchEvent(new MouseEvent("click"));
   setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
 
   const status = document.getElementById("submission-status");
-  if (!GOOGLE_APPS_SCRIPT_URL) {
-    status.textContent = "CSV downloaded. To submit to Sheets, set GOOGLE_APPS_SCRIPT_URL to your deployed Apps Script /exec URL.";
-    return;
-  }
-
-  const saveButton = document.querySelector('#screen-debrief button[onclick="saveTelemetryCSV()"]');
+  const button = document.querySelector('#screen-debrief button[onclick="saveTelemetryCSV()"]');
   submissionInProgress = true;
-  saveButton.disabled = true;
-  status.textContent = "Sending anonymous telemetry to Google Sheets…";
+  button.disabled = true;
+  status.textContent = "CSV downloaded. Sending session and survey data to Google Sheets…";
   try {
     const endpoint = new URL(GOOGLE_APPS_SCRIPT_URL);
     if (endpoint.protocol !== "https:") throw new Error("The Apps Script URL must use HTTPS.");
@@ -695,13 +983,17 @@ async function saveTelemetryCSV() {
       body: JSON.stringify({telemetryRows, survey: surveyState})
     });
     submissionAttempted = true;
-    status.textContent = "Submission request sent. The browser cannot confirm that Apps Script wrote the rows; check the GameTelemetry tab.";
+    status.textContent = "Submission request sent. The browser cannot confirm the write; check the GameTelemetry tab.";
   } catch (error) {
     status.textContent = `CSV downloaded, but the Sheets request failed: ${error.message}`;
   } finally {
     submissionInProgress = false;
-    saveButton.disabled = false;
+    button.disabled = false;
   }
+}
+
+function csvCell(value) {
+  return `"${String(value ?? "").replace(/"/g, '""')}"`;
 }
 </script>
 </body>

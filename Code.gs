@@ -7,15 +7,23 @@ const HEADERS = [
   "selected_S_print", "handoff_H_seq", "selected_S_save", "false_alarms_fa",
   "sdt_outcome", "rt_print_ms", "rt_handoff_ms", "rt_total_ms", "accessibility_score",
   "sequence_success", "confidence_q", "trial_payoff_pts", "likert_seq_aid",
-  "likert_stroop_hes", "sam_valence", "submitted_at"
+  "likert_stroop_hes", "sam_valence", "submitted_at", "trial_status", "skipped",
+  "confidence_label"
 ];
 const NUMERIC_FIELDS = new Set([
   "trial_index", "contrast_ratio", "n_distractors", "popout_flag", "stroop_conflict",
   "seq_guidance", "fitts_A_px", "fitts_W_eff_px", "discovered_D", "matched_M_print",
   "selected_S_print", "handoff_H_seq", "selected_S_save", "false_alarms_fa",
   "rt_print_ms", "rt_handoff_ms", "rt_total_ms", "accessibility_score",
-  "sequence_success", "confidence_q", "trial_payoff_pts"
+  "sequence_success", "confidence_q", "trial_payoff_pts", "skipped"
 ]);
+const OPTIONAL_NUMERIC_FIELDS = new Set([
+  "fitts_A_px", "fitts_W_eff_px", "rt_print_ms", "rt_handoff_ms",
+  "accessibility_score", "confidence_q"
+]);
+const BASE_HEADER_COUNT = HEADERS.length - 3;
+const CONFIDENCE_LABELS = ["Sure", "Somewhat Sure", "Not Sure", "Skipped"];
+const SURVEY_LABELS = ["Sure", "Somewhat Sure", "Not Sure"];
 
 function doPost(event) {
   try {
@@ -38,8 +46,13 @@ function doPost(event) {
         if (header === "likert_seq_aid") return survey.l1;
         if (header === "likert_stroop_hes") return survey.l2;
         if (header === "sam_valence") return survey.sam;
-        const value = row[header];
-        return NUMERIC_FIELDS.has(header) ? Number(value) : safeText(value);
+        const value = row[header] === undefined
+          ? (header === "trial_status" ? "Completed" : header === "skipped" ? 0 : "")
+          : row[header];
+        if (NUMERIC_FIELDS.has(header)) {
+          return OPTIONAL_NUMERIC_FIELDS.has(header) && value === "NA" ? "NA" : Number(value);
+        }
+        return value === "" ? "" : safeText(value);
       });
     });
 
@@ -51,8 +64,18 @@ function doPost(event) {
       if (firstRow.every(function(cell) { return cell === ""; })) {
         sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
         sheet.setFrozenRows(1);
-      } else if (HEADERS.some(function(header, index) { return firstRow[index] !== header; })) {
+      } else if (HEADERS.slice(0, BASE_HEADER_COUNT).some(function(header, index) {
+        return firstRow[index] !== header;
+      })) {
         throw new Error("The GameTelemetry header row does not match the expected schema.");
+      } else {
+        for (let index = BASE_HEADER_COUNT; index < HEADERS.length; index++) {
+          if (firstRow[index] === "") {
+            sheet.getRange(1, index + 1).setValue(HEADERS[index]);
+          } else if (firstRow[index] !== HEADERS[index]) {
+            throw new Error("The GameTelemetry header row does not match the expected schema.");
+          }
+        }
       }
 
       sheet.getRange(sheet.getLastRow() + 1, 1, values.length, HEADERS.length).setValues(values);
@@ -73,30 +96,46 @@ function getTelemetrySheet() {
 
 function validateSurvey(survey) {
   if (!survey || !isIntegerInRange(survey.sam, 1, 9) ||
-      !isIntegerInRange(survey.l1, 1, 5) || !isIntegerInRange(survey.l2, 1, 5)) {
+      !SURVEY_LABELS.includes(survey.l1) || !SURVEY_LABELS.includes(survey.l2)) {
     throw new Error("Survey values are invalid.");
   }
 }
 
 function validateRow(row) {
   if (!row || typeof row !== "object" || Array.isArray(row)) throw new Error("Invalid telemetry row.");
-  HEADERS.forEach(function(header) {
+  HEADERS.slice(0, BASE_HEADER_COUNT).forEach(function(header) {
     if (header !== "submitted_at" && header !== "likert_seq_aid" &&
         header !== "likert_stroop_hes" && header !== "sam_valence" &&
         !Object.prototype.hasOwnProperty.call(row, header)) {
       throw new Error("A telemetry field is missing.");
     }
   });
+  if (row.trial_status !== undefined && !["Completed", "Skipped"].includes(row.trial_status)) {
+    throw new Error("Trial status is invalid.");
+  }
+  if (row.skipped !== undefined && row.skipped !== 0 && row.skipped !== 1) {
+    throw new Error("Skip flag is invalid.");
+  }
+  if (row.confidence_label !== undefined && !CONFIDENCE_LABELS.includes(row.confidence_label)) {
+    throw new Error("Confidence label is invalid.");
+  }
 
   if (typeof row.user_id !== "string" || !row.user_id.trim() || row.user_id.length > 100 ||
       !/^C(?:0[1-9]|[1-4][0-9]|5[01])$/.test(row.comp_id) ||
       !["Normal", "Deutan_CVD", "Protan_CVD", "LowVision_Blur"].includes(row.vision_mode) ||
       !["Sprint_24", "Full_51"].includes(row.game_mode) ||
-      !["Hit", "FA", "Miss"].includes(row.sdt_outcome)) {
+      !["Hit", "FA", "Miss", "Skip"].includes(row.sdt_outcome)) {
     throw new Error("A telemetry row contains an invalid identifier or mode.");
   }
 
+  if ((row.trial_status === "Skipped") !== (row.sdt_outcome === "Skip") ||
+      (row.skipped !== undefined && (row.skipped === 1) !== (row.sdt_outcome === "Skip"))) {
+    throw new Error("Trial status and skip flag do not match.");
+  }
+
   NUMERIC_FIELDS.forEach(function(field) {
+    if (field === "skipped" && row.skipped === undefined) return;
+    if (OPTIONAL_NUMERIC_FIELDS.has(field) && row[field] === "NA") return;
     const rawValue = row[field];
     if ((typeof rawValue !== "number" && typeof rawValue !== "string") ||
         (typeof rawValue === "string" && !rawValue.trim())) {
